@@ -1,10 +1,7 @@
 package com.github.hackerwin7.shrimp.thrift.impl;
 
 import com.github.hackerwin7.shrimp.common.Utils;
-import com.github.hackerwin7.shrimp.thrift.gen.TFileChunk;
-import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
-import com.github.hackerwin7.shrimp.thrift.gen.TFileService;
-import com.github.hackerwin7.shrimp.thrift.gen.TransFileConstants;
+import com.github.hackerwin7.shrimp.thrift.gen.*;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
 
@@ -21,10 +18,10 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Desc: implement thrift interface for file transportation
  * Tips:
  */
-public class TFileServiceHandler implements TFileService.Iface {
+public class TDFileServiceHandler implements TDFileService.Iface {
 
     /* logger */
-    private static final Logger LOG = Logger.getLogger(TFileServiceHandler.class);
+    private static final Logger LOG = Logger.getLogger(TDFileServiceHandler.class);
 
     /* constants */
     public static final int QLEN = 1024;
@@ -58,10 +55,12 @@ public class TFileServiceHandler implements TFileService.Iface {
         File file = new File(path);
         try {
             raf = new RandomAccessFile(file, "r");
+            raf.seek(start);//set offset
             info.setName(name);
             info.setLength(file.length());
             info.setTs(System.currentTimeMillis());
             info.setMd5(Utils.md5Hex(path));
+            info.setStart(start);
         } catch (Throwable e) {
             LOG.error(e.getMessage(), e);
             err = 1;
@@ -84,7 +83,7 @@ public class TFileServiceHandler implements TFileService.Iface {
             @Override
             public void run() {
                 long index = startOffset;
-                long left = info.length - startOffset;
+                long left = info.length - (startOffset + 1);
                 int read = TransFileConstants.CHUNK_UNIT;
                 if(left < read)
                     read = (int) left;
@@ -109,7 +108,7 @@ public class TFileServiceHandler implements TFileService.Iface {
 
                         /* index, length adjusting */
                         index += read;
-                        left = info.length - index;
+                        left = info.length - (index + 1);
                         if(left < read)
                             read = (int) left;
                     }
@@ -150,6 +149,7 @@ public class TFileServiceHandler implements TFileService.Iface {
         try {
             if(raf != null)
                 raf.close();
+            queue.clear();
         } catch (Throwable e) {
             LOG.error(e.getMessage(), e);
             err = 1;

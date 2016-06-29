@@ -1,9 +1,10 @@
 package com.github.hackerwin7.shrimp.thrift.client;
 
+import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileChunk;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
-import com.github.hackerwin7.shrimp.thrift.gen.TFileService;
+import com.github.hackerwin7.shrimp.thrift.gen.TDFileService;
 import org.apache.log4j.Logger;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -23,16 +24,16 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Desc: file transfer client
  * Tips:
  */
-public class TransClient {
+public class DownloadClient {
 
     /* logger */
-    private static final Logger LOG = Logger.getLogger(TransClient.class);
+    private static final Logger LOG = Logger.getLogger(DownloadClient.class);
 
     /* constants */
     public static final int QLEN = 1024;
 
     /* relative path */
-    private String relPath = null;
+    private String relPath = "src/test/resources";
 
     /* queue */
     private BlockingQueue<TFileChunk> queue = new LinkedBlockingQueue<>(QLEN);
@@ -40,23 +41,37 @@ public class TransClient {
     /* write thread */
     private Thread writeThread = null;
 
+    /* error code */
+    private Err error = null;
+
     /**
      * start client to download the file
      * @param host
      * @param port
      * @param fileName
      * @param offset
-     * @return err code, 0 indicate no error
+     * @return Err class
      * @throws Exception
      */
-    public int download(String host, int port, String fileName, long offset) throws Exception {
+    public Err download(String host, int port, String fileName, long offset) throws Exception {
+
+        /* build error code */
+        error = new Err();
+        error.setCommitOffset(offset);
+
+        /* start client */
         TTransport transport = new TSocket(host, port);
         transport.open();
         TProtocol protocol = new TBinaryProtocol(transport);
-        TFileService.Client client = new TFileService.Client(protocol);
-        int code = perform(client, fileName, offset);
+        TDFileService.Client client = new TDFileService.Client(protocol);
+        try {
+            perform(client, fileName, offset);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+            error.setErrCode(Err.DOWNLOAD_FAIL);
+        }
         transport.close();
-        return code;
+        return error;
     }
 
     /**
@@ -67,7 +82,7 @@ public class TransClient {
      * @return err code
      * @throws Exception
      */
-    private int perform(TFileService.Client client, String fileName, long start) throws Exception {
+    private int perform(TDFileService.Client client, String fileName, long start) throws Exception {
         long fetch = start + 1; // have fetched data
         TFileInfo info = client.open(fileName, start);
 
@@ -99,11 +114,13 @@ public class TransClient {
         writeThread = new Thread(new Runnable() {
             @Override
             public void run() {
+                //record write offset for error code using
+                long write = start + 1;
                 try {
                     boolean isTaken = false;
                     RandomAccessFile raf = new RandomAccessFile(new File(relPath + fileName),
                             "rw");
-                    long write = start + 1;
+                    raf.seek(start);
 
                     /* writing */
                     while (!isTaken) {
@@ -117,6 +134,8 @@ public class TransClient {
                     raf.close();
                 } catch (Throwable e) {
                     LOG.error(e.getMessage(), e);
+                    error.setErrCode(Err.DOWNLOAD_FAIL);
+                    error.setCommitOffset(write - 1);//offset not fetch account
                 }
             }
         });
@@ -132,12 +151,17 @@ public class TransClient {
      */
     private int checking(TFileInfo info, String fileName) throws Exception {
         writeThread.join();//waiting writing ended
+        if(error.getErrCode() != Err.OK)
+            return -1;// before checking , there has been a error occured
         String src = info.getMd5();
         String des = Utils.md5Hex(relPath + fileName);
-        if(src.equals(des))
+        if(src.equals(des)) {
+            error.setErrCode(Err.OK);
             return 0;
-        else
-            return 1;
+        } else {
+            error.setErrCode(Err.MD5_CHECKING);
+            return Err.MD5_CHECKING;
+        }
     }
 
     /* getter and setter */

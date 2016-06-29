@@ -1,7 +1,7 @@
 package com.github.hackerwin7.shrimp.thrift.server;
 
 import com.github.hackerwin7.shrimp.thrift.gen.TFileService;
-import com.github.hackerwin7.shrimp.thrift.impl.TFileServiceHandler;
+import com.github.hackerwin7.shrimp.thrift.impl.TDFileServiceHandler;
 import org.apache.log4j.Logger;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
@@ -22,7 +22,7 @@ public class TransServer {
     private static final Logger LOG = Logger.getLogger(TransServer.class);
 
     /* driver */
-    private TFileServiceHandler handler;
+    private TDFileServiceHandler handler;
     private TFileService.Processor processor;
 
     /* data */
@@ -33,7 +33,7 @@ public class TransServer {
      * @throws Exception
      */
     public void start() throws Exception {
-        handler = new TFileServiceHandler();
+        handler = new TDFileServiceHandler();
         processor = new TFileService.Processor(handler);
         Runnable simple = new Runnable() {
             @Override
