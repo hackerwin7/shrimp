@@ -83,7 +83,7 @@ public class TDFileServiceHandler implements TDFileService.Iface {
             @Override
             public void run() {
                 long index = startOffset;
-                long left = info.length - (startOffset + 1);
+                long left = info.length - startOffset;//account - account, startOffset = (startoffset - 1) + 1; ='s left is account, ='s right is offset
                 int read = TransFileConstants.CHUNK_UNIT;
                 if(left < read)
                     read = (int) left;
@@ -108,7 +108,7 @@ public class TDFileServiceHandler implements TDFileService.Iface {
 
                         /* index, length adjusting */
                         index += read;
-                        left = info.length - (index + 1);
+                        left = info.length - index;
                         if(left < read)
                             read = (int) left;
                     }

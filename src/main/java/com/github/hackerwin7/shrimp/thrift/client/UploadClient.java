@@ -5,6 +5,7 @@ import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.gen.*;
 import org.apache.log4j.Logger;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -57,7 +58,8 @@ public class UploadClient {
         TTransport transport = new TSocket(host, port);
         transport.open();
         TProtocol protocol = new TBinaryProtocol(transport);
-        TUFileService.Client client = new TUFileService.Client(protocol);
+        TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Upload");
+        TUFileService.Client client = new TUFileService.Client(mp);
         try {
             perform(client, fileName, offset);
         } catch (Exception | Error e) {
@@ -137,7 +139,7 @@ public class UploadClient {
                         queue.put(chunk);
 
                         index += read;
-                        left = info.getLength() - index;//length is account, index is offset,so weird
+                        left = info.getLength() - index;//length is account, index is also account not offset, index = (index - 1) + 1
                         if(left < read)
                             read = (int) left;
                     }
@@ -158,7 +160,7 @@ public class UploadClient {
      * @throws Exception
      */
     private void sending(TUFileService.Client client, TFileInfo info) throws Exception {
-        long send = info.getStart() + 1;
+        long send = info.getStart();
         while (send < info.getLength()) {
             TFileChunk chunk = queue.take();
             client.sendChunk(chunk);
@@ -178,5 +180,11 @@ public class UploadClient {
         TErr te = client.checking(info);
         error.setErrCode(te.getErr());
         error.setCommitOffset(te.getCommit());
+    }
+
+    /* getter and setter */
+
+    public void setRelPath(String relPath) {
+        this.relPath = relPath;
     }
 }

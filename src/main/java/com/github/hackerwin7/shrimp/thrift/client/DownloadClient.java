@@ -6,7 +6,9 @@ import com.github.hackerwin7.shrimp.thrift.gen.TFileChunk;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import com.github.hackerwin7.shrimp.thrift.gen.TDFileService;
 import org.apache.log4j.Logger;
+import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -49,7 +51,8 @@ public class DownloadClient {
      * @param host
      * @param port
      * @param fileName
-     * @param offset
+     * @param offset , this offset indicate that the current offset has not been write
+     *               start is the offset which haven't been write, write = (start - 1) + 1, (start - 1) indicate the offset have been write
      * @return Err class
      * @throws Exception
      */
@@ -63,7 +66,8 @@ public class DownloadClient {
         TTransport transport = new TSocket(host, port);
         transport.open();
         TProtocol protocol = new TBinaryProtocol(transport);
-        TDFileService.Client client = new TDFileService.Client(protocol);
+        TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Download");
+        TDFileService.Client client = new TDFileService.Client(mp);
         try {
             perform(client, fileName, offset);
         } catch (Exception | Error e) {
@@ -83,7 +87,7 @@ public class DownloadClient {
      * @throws Exception
      */
     private int perform(TDFileService.Client client, String fileName, long start) throws Exception {
-        long fetch = start + 1; // have fetched data
+        long fetch = start; // start is offset that haven't been write
         TFileInfo info = client.open(fileName, start);
 
         /* start writing */
@@ -115,7 +119,7 @@ public class DownloadClient {
             @Override
             public void run() {
                 //record write offset for error code using
-                long write = start + 1;
+                long write = start; // start is the offset which haven't been write, write = (start - 1) + 1, (start - 1) indicate the offset have been write
                 try {
                     boolean isTaken = false;
                     RandomAccessFile raf = new RandomAccessFile(new File(relPath + fileName),
@@ -135,7 +139,7 @@ public class DownloadClient {
                 } catch (Throwable e) {
                     LOG.error(e.getMessage(), e);
                     error.setErrCode(Err.DOWNLOAD_FAIL);
-                    error.setCommitOffset(write - 1);//offset not fetch account
+                    error.setCommitOffset(write);//write - 1 is the offset which have been write , we record the first offset haven't been write
                 }
             }
         });

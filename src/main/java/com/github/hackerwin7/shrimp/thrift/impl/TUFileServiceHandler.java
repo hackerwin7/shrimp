@@ -76,27 +76,35 @@ public class TUFileServiceHandler implements TUFileService.Iface {
 
     /**
      * write the chunk into the disk from the queue
+     * start the writing thread
+     * @param info
      * @throws Exception
      */
     private void writing(TFileInfo info) throws Exception {
-        long write = info.getStart() + 1;
-        String path = relPath + info.getName();
-        File file = new File(path);
-        try {
-            RandomAccessFile raf = new RandomAccessFile(file, "rw");
-            raf.seek(info.getStart());
-            while (write < info.getLength()) {
-                TFileChunk chunk = queue.take();
-                byte[] bytes = chunk.getBytes();
-                raf.write(bytes, 0, (int) chunk.getLength());
-                write += chunk.getLength();
+        wth = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long write = info.getStart();
+                String path = relPath + info.getName();
+                File file = new File(path);
+                try {
+                    RandomAccessFile raf = new RandomAccessFile(file, "rw");
+                    raf.seek(info.getStart());
+                    while (write < info.getLength()) {
+                        TFileChunk chunk = queue.take();
+                        byte[] bytes = chunk.getBytes();
+                        raf.write(bytes, 0, (int) chunk.getLength());
+                        write += chunk.getLength();
+                    }
+                    raf.close();
+                } catch (Exception | Error e) {
+                    LOG.error(e.getMessage(), e);
+                    error.setErrCode(Err.UPLOAD_FAIL);
+                    error.setCommitOffset(write);//write is first offset that haven't been write
+                }
             }
-            raf.close();
-        } catch (Exception | Error e) {
-            LOG.error(e.getMessage(), e);
-            error.setErrCode(Err.UPLOAD_FAIL);
-            error.setCommitOffset(write);
-        }
+        });
+        wth.start();
     }
 
     /**
@@ -159,5 +167,15 @@ public class TUFileServiceHandler implements TUFileService.Iface {
     public void close() throws TException {
         if(queue != null)
             queue.clear();
+    }
+
+    /* getter and setter */
+
+    public String getRelPath() {
+        return relPath;
+    }
+
+    public void setRelPath(String relPath) {
+        this.relPath = relPath;
     }
 }
