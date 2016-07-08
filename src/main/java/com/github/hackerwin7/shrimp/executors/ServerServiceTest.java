@@ -1,6 +1,6 @@
 package com.github.hackerwin7.shrimp.executors;
 
-import com.github.hackerwin7.shrimp.thrift.server.TransServer;
+import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,11 +20,11 @@ public class ServerServiceTest {
 
     public static void main(String[] args) throws Exception {
         ServerServiceTest dsst = new ServerServiceTest();
-        dsst.start();
+        dsst.start(9091);
     }
 
-    private void start() throws Exception {
-        TransServer server = new TransServer();
+    private void start(int port) throws Exception {
+        MultipleProcServer server = new MultipleProcServer();
         server.setDownPath("src/main/resources/");
         server.setUpPath("src/main/resources/");
         server.start(port);

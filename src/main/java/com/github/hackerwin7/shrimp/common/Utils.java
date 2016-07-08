@@ -4,6 +4,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.net.InetAddress;
 
 /**
  * Created by IntelliJ IDEA.
@@ -37,5 +38,15 @@ public class Utils {
      */
     public static String md5Hex(FileInputStream fis) throws Exception {
         return DigestUtils.md5Hex(fis);
+    }
+
+    /**
+     * get local host ip
+     * @return local ip
+     * @throws Exception
+     */
+    public static String ip() throws Exception {
+        InetAddress ip = InetAddress.getLocalHost();
+        return ip.getHostAddress();
     }
 }

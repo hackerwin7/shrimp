@@ -5,8 +5,9 @@ import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileChunk;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import com.github.hackerwin7.shrimp.thrift.gen.TDFileService;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.apache.thrift.TMultiplexedProcessor;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -15,6 +16,7 @@ import org.apache.thrift.transport.TTransport;
 
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -46,6 +48,21 @@ public class DownloadClient {
     /* error code */
     private Err error = null;
 
+    /* controller */
+    private ControllerClient controller = null;
+
+    public DownloadClient() throws Exception {
+        controller = new ControllerClient();
+    }
+
+    /**
+     * controller is needed
+     * @param cont
+     */
+    public DownloadClient(ControllerClient cont) {
+        controller = cont;
+    }
+
     /**
      * start client to download the file
      * @param host
@@ -76,6 +93,42 @@ public class DownloadClient {
         }
         transport.close();
         return error;
+    }
+
+    /**
+     * download with the controller
+     * @param fileName
+     * @param offset
+     * @return error code
+     * @throws TException
+     */
+    public Err download(String fileName, long offset) throws TException {
+        //controller find the target to download
+        try {
+            controller.open();
+            List<String> hps = controller.servers(fileName);
+            if(hps.size() == 0)
+                throw new Exception("no server have the file " + fileName);
+            String[] arr = StringUtils.split(hps.get(0), ":");
+            String host = arr[0];
+            int port = Integer.parseInt(arr[1]);
+            Err err = download(host, port, fileName, offset);
+            controller.close();
+            return err;
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+            throw new TException("controller encounter error !!!");
+        }
+    }
+
+    /**
+     * default offset is 0
+     * @param fileName
+     * @return error code
+     * @throws TException
+     */
+    public Err download(String fileName) throws TException {
+        return download(fileName, 0);
     }
 
     /**
@@ -176,6 +229,10 @@ public class DownloadClient {
 
     public void setRelPath(String relPath) {
         this.relPath = relPath;
+    }
+
+    public void setController(ControllerClient controller) {
+        this.controller = controller;
     }
 
 }

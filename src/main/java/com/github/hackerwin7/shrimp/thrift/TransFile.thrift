@@ -102,6 +102,29 @@ service TUFileService {
     oneway void close()
 }
 
+/**
+* controller service, info transportation
+**/
+service TControllerService {
+
+    /**
+    * get the own complete file servers list
+    **/
+    list<string> fileServers(1:string name),
+
+
+    /**
+    * send a complete file info to controller
+    * before the upload and after the download (both success)
+    **/
+    oneway void sendFileInfo(1:TFileInfo info),
+
+    /**
+    * register the server to the controller
+    * @hostport such as 127.0.0.1:9091
+    **/
+    oneway void registerServer(1:string hostport)
+}
 
 /*
 * RPC communication
@@ -133,5 +156,11 @@ service TTransService {
     /**
     * send message to the others
     **/
-    oneway void sendMsg(1:TMessage msg)
+    oneway void sendMsg(1:TMessage msg),
+
+    /**
+    * whether exists the specific file, how to know the file is complete or not ?
+    * the controller can load the max size of the file ?????????? can we make a complete file pool in controller ?, I think we can do it
+    **/
+    TFileInfo getFileInfo(1:string name)
 }

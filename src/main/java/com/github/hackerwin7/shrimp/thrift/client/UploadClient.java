@@ -3,7 +3,9 @@ package com.github.hackerwin7.shrimp.thrift.client;
 import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.gen.*;
+import org.apache.hadoop.yarn.webapp.Controller;
 import org.apache.log4j.Logger;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -71,6 +73,18 @@ public class UploadClient {
     }
 
     /**
+     * default offset is zero
+     * @param host
+     * @param port
+     * @param fileName
+     * @return error code
+     * @throws TException
+     */
+    public Err upload(String host, int port, String fileName) throws TException {
+        return upload(host, port, fileName);
+    }
+
+    /**
      * upload a file according to the offset
      * @param client
      * @param fileName
@@ -80,6 +94,10 @@ public class UploadClient {
      */
     private int perform(TUFileService.Client client, String fileName, long start) throws Exception {
         TFileInfo info = open(fileName, start);
+
+        //before the upload , inform the controller the file information
+        inform(info);
+
         client.open(info); // server receive the info, and start writing to wait the file chunk from the queue
 
         /* client processing */
@@ -89,6 +107,18 @@ public class UploadClient {
 
         client.close();
         return 0;
+    }
+
+    /**
+     * inform the controller to update the file info
+     * @param info
+     * @throws Exception
+     */
+    private void inform(TFileInfo info) throws Exception {
+        ControllerClient controller = new ControllerClient();
+        controller.open();
+        controller.sendInfo(info);
+        controller.close();
     }
 
     /**
