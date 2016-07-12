@@ -3,7 +3,6 @@ package com.github.hackerwin7.shrimp.thrift.client;
 import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.gen.*;
-import org.apache.hadoop.yarn.webapp.Controller;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -34,7 +33,8 @@ public class UploadClient {
     public static final int QLEN = 1024;
 
     /* relative path */
-    private String relPath = "src/test/resources";
+    private String edPath = "src/test/resources";
+    private String ingPath = null;
 
     /* read thread */
     private Thread readThread = null;
@@ -130,7 +130,7 @@ public class UploadClient {
      */
     private TFileInfo open(String fileName, long start) throws Exception {
         TFileInfo info = new TFileInfo();
-        String path = relPath + fileName;
+        String path = edPath + fileName;
         File file = new File(path);
         info.setTs(System.currentTimeMillis());
         info.setMd5(Utils.md5Hex(path));
@@ -150,7 +150,7 @@ public class UploadClient {
             @Override
             public void run() {
                 try {
-                    String path = relPath + info.getName();
+                    String path = edPath + info.getName();
                     RandomAccessFile raf = new RandomAccessFile(new File(path), "r");
                     raf.seek(info.getStart());
                     long index = info.getStart();
@@ -214,7 +214,11 @@ public class UploadClient {
 
     /* getter and setter */
 
-    public void setRelPath(String relPath) {
-        this.relPath = relPath;
+    public void setEdPath(String edPath) {
+        this.edPath = edPath;
+    }
+
+    public void setIngPath(String ingPath) {
+        this.ingPath = ingPath;
     }
 }

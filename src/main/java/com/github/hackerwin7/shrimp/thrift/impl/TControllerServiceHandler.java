@@ -3,8 +3,8 @@ package com.github.hackerwin7.shrimp.thrift.impl;
 import com.github.hackerwin7.shrimp.thrift.client.TransClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
+import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.io.file.tfile.TFile;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
 
@@ -30,9 +30,20 @@ public class TControllerServiceHandler implements TControllerService.Iface {
     private Map<String, TFileInfo> filePool = new HashMap<>();
     private List<String> servers = new LinkedList<>();//127.0.0.1:9098
     private Map<String, TransClient> clients = new HashMap<>();
+    private Map<String, TFilePool> pools = new HashMap<>();
 
-    /* setting signal data */
+    /* signal */
     private int findAccount = 3;
+
+    /**
+     * send file pool to the controller server
+     * @param pool
+     * @throws TException
+     */
+    @Override
+    public void sendFilePool(TFilePool pool) throws TException {
+        pools.put(pool.getHost() + ":" + pool.getPort(), pool);
+    }
 
     /**
      * send the file info to the controller and update the info pool
@@ -120,13 +131,36 @@ public class TControllerServiceHandler implements TControllerService.Iface {
     }
 
     /**
-     * spread to call the get file info
+     * check the mem-data and return result
+     * server directory path : complete, downloading
      * @param name
      * @return list of servers own the specific file
      * @throws TException
      */
     @Override
     public List<String> fileServers(String name) throws TException {
+        List<String> hpList = new LinkedList<>();
+        for(Map.Entry<String, TFilePool> entry : pools.entrySet()) {
+            String hostport = entry.getKey();
+            TFilePool pool = entry.getValue();
+            Map<String, TFileInfo> infos = pool.getPool();
+            if (infos.containsKey(name)) {
+                hpList.add(hostport);
+                if(hpList.size() >= findAccount)
+                    break;
+            }
+        }
+        return hpList;
+    }
+
+    /**
+     * the strategy of no downloading directory
+     * @param name
+     * @return servers
+     * @throws TException
+     */
+    @Deprecated
+    private List<String> old_fileSevers(String name) throws TException {
         // get the complete file info from the file pool
         TFileInfo info = filePool.get(name);
         //spread to server to get the their local file info

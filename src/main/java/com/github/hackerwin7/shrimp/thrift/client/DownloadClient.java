@@ -36,8 +36,9 @@ public class DownloadClient {
     /* constants */
     public static final int QLEN = 1024;
 
-    /* relative path */
-    private String relPath = "src/test/resources";
+    /* relative path , complete file move from ing to ed*/
+    private String ingPath = "src/test/resources";
+    private String edPath = null;
 
     /* queue */
     private BlockingQueue<TFileChunk> queue = new LinkedBlockingQueue<>(QLEN);
@@ -160,7 +161,24 @@ public class DownloadClient {
 
         client.close();
 
+        /* move the file from ing to ed if ok */
+        if (error.getErrCode() == Err.OK)
+            moving(fileName);
+
         return code;
+    }
+
+    /**
+     * move the download complete file from downloading to downloaded
+     * @param fileName
+     * @throws Exception
+     */
+    private void moving(String fileName) throws Exception {
+        String path = ingPath + fileName;
+        File file = new File(path);
+        boolean code = file.renameTo(new File(edPath + fileName));
+        if(!code)
+            throw new Exception("move file failed......");
     }
 
     /**
@@ -175,7 +193,7 @@ public class DownloadClient {
                 long write = start; // start is the offset which haven't been write, write = (start - 1) + 1, (start - 1) indicate the offset have been write
                 try {
                     boolean isTaken = false;
-                    RandomAccessFile raf = new RandomAccessFile(new File(relPath + fileName),
+                    RandomAccessFile raf = new RandomAccessFile(new File(ingPath + fileName),
                             "rw");
                     raf.seek(start);
 
@@ -211,7 +229,7 @@ public class DownloadClient {
         if(error.getErrCode() != Err.OK)
             return -1;// before checking , there has been a error occured
         String src = info.getMd5();
-        String des = Utils.md5Hex(relPath + fileName);
+        String des = Utils.md5Hex(ingPath + fileName);
         if(src.equals(des)) {
             error.setErrCode(Err.OK);
             return 0;
@@ -223,12 +241,16 @@ public class DownloadClient {
 
     /* getter and setter */
 
-    public String getRelPath() {
-        return relPath;
+    public String getIngPath() {
+        return ingPath;
     }
 
-    public void setRelPath(String relPath) {
-        this.relPath = relPath;
+    public void setIngPath(String ingPath) {
+        this.ingPath = ingPath;
+    }
+
+    public void setEdPath(String edPath) {
+        this.edPath = edPath;
     }
 
     public void setController(ControllerClient controller) {

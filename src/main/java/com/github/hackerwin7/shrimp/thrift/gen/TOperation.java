@@ -11,14 +11,14 @@ import java.util.Map;
 import java.util.HashMap;
 import org.apache.thrift.TEnum;
 
-public enum Operation implements org.apache.thrift.TEnum {
+public enum TOperation implements org.apache.thrift.TEnum {
   download(0),
   upload(1),
   heartbeat(2);
 
   private final int value;
 
-  private Operation(int value) {
+  private TOperation(int value) {
     this.value = value;
   }
 
@@ -33,7 +33,7 @@ public enum Operation implements org.apache.thrift.TEnum {
    * Find a the enum type by its integer value, as defined in the Thrift IDL.
    * @return null if the value is not found.
    */
-  public static Operation findByValue(int value) { 
+  public static TOperation findByValue(int value) { 
     switch (value) {
       case 0:
         return download;

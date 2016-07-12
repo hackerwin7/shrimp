@@ -25,8 +25,8 @@ public class ServerServiceTest {
 
     private void start(int port) throws Exception {
         MultipleProcServer server = new MultipleProcServer();
-        server.setDownPath("src/main/resources/");
-        server.setUpPath("src/main/resources/");
+        server.setIngPath("src/main/resources/");
+        server.setEdPath("src/main/resources/");
         server.start(port);
     }
 }

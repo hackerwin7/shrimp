@@ -26,8 +26,9 @@ public class TDFileServiceHandler implements TDFileService.Iface {
     /* constants */
     public static final int QLEN = 1024;
 
-    /* file transfer path */
-    private String relPath = null;
+    /* file transfer path, downloading and downloaded*/
+    private String edPath = null;
+    private String ingPath = null;
 
     /* data */
     private RandomAccessFile raf = null;
@@ -51,7 +52,7 @@ public class TDFileServiceHandler implements TDFileService.Iface {
     @Override
     public TFileInfo open(String name, long start) throws TException {
         TFileInfo info = new TFileInfo();
-        String path = relPath + name;
+        String path = edPath + name;
         File file = new File(path);
         try {
             raf = new RandomAccessFile(file, "r");
@@ -157,12 +158,16 @@ public class TDFileServiceHandler implements TDFileService.Iface {
     }
 
     /* setter and getter */
-    public String getRelPath() {
-        return relPath;
+    public String getEdPath() {
+        return edPath;
     }
 
-    public void setRelPath(String relPath) {
-        this.relPath = relPath;
+    public void setEdPath(String edPath) {
+        this.edPath = edPath;
+    }
+
+    public void setIngPath(String ingPath) {
+        this.ingPath = ingPath;
     }
 
     public int getErr() {

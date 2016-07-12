@@ -14,8 +14,9 @@ import com.github.hackerwin7.shrimp.thrift.client.DownloadClient;
 public class Client3Test {
     public static void main(String[] args) throws Exception {
         DownloadClient download = new DownloadClient();
-        download.setRelPath("src/data/server3/");
-        Err err = download.download("pom.xml", 5);
+        download.setIngPath("src/data/server3/ing/");
+        download.setEdPath("src/data/server3/ed/");
+        Err err = download.download("shrimp.iml", 4);
         if(err.getErrCode() != Err.OK)
             System.out.println("failure");
         else

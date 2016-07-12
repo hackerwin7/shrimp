@@ -103,6 +103,15 @@ service TUFileService {
 }
 
 /**
+* file pool struct
+**/
+struct TFilePool {
+    1: string host,
+    2: i32 port,
+    3: map<string, TFileInfo> pool
+}
+
+/**
 * controller service, info transportation
 **/
 service TControllerService {
@@ -123,13 +132,18 @@ service TControllerService {
     * register the server to the controller
     * @hostport such as 127.0.0.1:9091
     **/
-    oneway void registerServer(1:string hostport)
+    oneway void registerServer(1:string hostport),
+
+    /**
+    * send a file pool info to the controller
+    **/
+    oneway void sendFilePool(1:TFilePool pool)
 }
 
 /*
 * RPC communication
 * */
-enum Operation {
+enum TOperation {
     download = 0,
     upload = 1,
     heartbeat = 2
@@ -141,7 +155,7 @@ enum Operation {
 struct TMessage {
     1: string src,
     2: string des,
-    3: Operation op,
+    3: TOperation op,
     4: i64 ts,
     5: string name,
     6: i64 offset,

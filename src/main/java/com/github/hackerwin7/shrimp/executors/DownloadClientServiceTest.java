@@ -70,7 +70,7 @@ public class DownloadClientServiceTest {
 
         //connect and download
         DownloadClient client = new DownloadClient();
-        client.setRelPath("src/main/");
+        client.setIngPath("src/main/");
         Err error = client.download(host, port, name, 3);
         if(error.getErrCode() != Err.OK)
             System.out.println("failure");

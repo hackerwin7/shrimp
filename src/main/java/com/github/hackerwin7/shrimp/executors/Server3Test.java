@@ -2,6 +2,7 @@ package com.github.hackerwin7.shrimp.executors;
 
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
+import com.github.hackerwin7.shrimp.service.HeartBeatController;
 import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
 
 /**
@@ -15,9 +16,9 @@ import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
 public class Server3Test {
     public static void main(String[] args) throws Exception {
         MultipleProcServer mServer = new MultipleProcServer();
-        mServer.setDownPath("src/data/server3/");
-        mServer.setUpPath("src/data/server3/");
-        mServer.setTransPath("src/data/server3/");
+        mServer.setIngPath("src/data/server3/ing/");
+        mServer.setEdPath("src/data/server3/ed/");
+        mServer.setTransPath("src/data/server3/ed/");
         mServer.start(9093);
 
         //register to controller, firstly start controller
@@ -25,5 +26,10 @@ public class Server3Test {
         controller.open();
         controller.register(Utils.ip() + ":" + 9093);
         controller.close();
+
+        //heartbeat
+        HeartBeatController hb = new HeartBeatController(Utils.ip(), 9093);
+        hb.setPath("src/data/server3/ed/");
+        hb.start();
     }
 }

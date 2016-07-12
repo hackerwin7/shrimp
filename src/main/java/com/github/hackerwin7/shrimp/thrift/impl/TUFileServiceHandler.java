@@ -31,7 +31,8 @@ public class TUFileServiceHandler implements TUFileService.Iface {
     public static final int QLEN = 1024;
 
     /* file transfer path */
-    private String relPath = null;
+    private String ingPath = null;
+    private String edPath = null;
 
     /* write thread */
     private Thread wth = null;
@@ -85,7 +86,7 @@ public class TUFileServiceHandler implements TUFileService.Iface {
             @Override
             public void run() {
                 long write = info.getStart();
-                String path = relPath + info.getName();
+                String path = ingPath + info.getName();
                 File file = new File(path);
                 try {
                     RandomAccessFile raf = new RandomAccessFile(file, "rw");
@@ -122,7 +123,7 @@ public class TUFileServiceHandler implements TUFileService.Iface {
             return terror;
         }
         /* md5 match */
-        String path = relPath + info.getName();
+        String path = ingPath + info.getName();
         try {
             String client = info.getMd5();
             String server = Utils.md5Hex(path);
@@ -134,7 +135,24 @@ public class TUFileServiceHandler implements TUFileService.Iface {
             LOG.error(e.getMessage(), e);
             terror.setErr(Err.MD5_CHECKING);
         }
+
+        /* if OK moving */
+        if (terror.getErr() == Err.OK)
+            moving(info.getName());
+
         return terror;
+    }
+
+    /**
+     * move file from ing to ed
+     * @param fileName
+     * @throws TException
+     */
+    private void moving(String fileName) throws TException {
+        File ingFile = new File(ingPath + fileName);
+        File edFile = new File(edPath + fileName);
+        if(!ingFile.renameTo(edFile))
+            throw new TException("moving file error");
     }
 
     /**
@@ -147,7 +165,7 @@ public class TUFileServiceHandler implements TUFileService.Iface {
     public TFileInfo fileInfo(String name) throws TException {
         TFileInfo info = new TFileInfo();
         try {
-            String path = relPath + name;
+            String path = ingPath + name;
             File file = new File(path);
             info.setName(name);
             info.setLength(file.length());
@@ -171,11 +189,15 @@ public class TUFileServiceHandler implements TUFileService.Iface {
 
     /* getter and setter */
 
-    public String getRelPath() {
-        return relPath;
+    public String getIngPath() {
+        return ingPath;
     }
 
-    public void setRelPath(String relPath) {
-        this.relPath = relPath;
+    public void setIngPath(String ingPath) {
+        this.ingPath = ingPath;
+    }
+
+    public void setEdPath(String edPath) {
+        this.edPath = edPath;
     }
 }

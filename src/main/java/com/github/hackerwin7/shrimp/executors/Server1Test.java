@@ -2,6 +2,7 @@ package com.github.hackerwin7.shrimp.executors;
 
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
+import com.github.hackerwin7.shrimp.service.HeartBeatController;
 import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
 import org.apache.log4j.Logger;
 
@@ -19,9 +20,9 @@ public class Server1Test {
 
     public static void main(String[] args) throws Exception {
         MultipleProcServer mServer = new MultipleProcServer();
-        mServer.setDownPath("src/data/server1/");
-        mServer.setUpPath("src/data/server1/");
-        mServer.setTransPath("src/data/server1/");
+        mServer.setIngPath("src/data/server1/ing/");
+        mServer.setEdPath("src/data/server1/ed/");
+        mServer.setTransPath("src/data/server1/ed/");
         mServer.start(9091);
 
         //register to controller, firstly start controller
@@ -30,10 +31,12 @@ public class Server1Test {
         controller.register(Utils.ip() + ":" + 9091);
         controller.close();
 
-        LOG.debug("server1 started......");
+        //start heartbeat
+        HeartBeatController hb = new HeartBeatController(Utils.ip(), 9091);
+        hb.setPath("src/data/server1/ed/");
+        hb.start();
 
-//        Server1Test st1 = new Server1Test();
-//        st1.start1();
+        LOG.debug("server1 started......");
     }
 
     private void start1() throws Exception {

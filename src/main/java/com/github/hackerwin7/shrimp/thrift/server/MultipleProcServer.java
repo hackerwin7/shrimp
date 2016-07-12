@@ -1,10 +1,8 @@
 package com.github.hackerwin7.shrimp.thrift.server;
 
-import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TDFileService;
 import com.github.hackerwin7.shrimp.thrift.gen.TTransService;
 import com.github.hackerwin7.shrimp.thrift.gen.TUFileService;
-import com.github.hackerwin7.shrimp.thrift.impl.TControllerServiceHandler;
 import com.github.hackerwin7.shrimp.thrift.impl.TDFileServiceHandler;
 import com.github.hackerwin7.shrimp.thrift.impl.TTransServiceHandler;
 import com.github.hackerwin7.shrimp.thrift.impl.TUFileServiceHandler;
@@ -35,8 +33,8 @@ public class MultipleProcServer {
     private int port = 9090;
 
     /* path */
-    private String downPath = null;
-    private String upPath = null;
+    private String ingPath = null;
+    private String edPath = null;
     private String transPath = null;
 
     /**
@@ -46,9 +44,11 @@ public class MultipleProcServer {
     public void start(int port) throws Exception {
         this.port = port;
         TDFileServiceHandler down = new TDFileServiceHandler();
-        down.setRelPath(downPath);
+        down.setIngPath(ingPath);
+        down.setEdPath(edPath);
         TUFileServiceHandler up = new TUFileServiceHandler();
-        up.setRelPath(upPath);
+        up.setIngPath(ingPath);
+        up.setEdPath(edPath);
         TTransServiceHandler trans = new TTransServiceHandler();
         trans.setRelPath(transPath);
         processor.registerProcessor("Download", new TDFileService.Processor(down));
@@ -80,12 +80,12 @@ public class MultipleProcServer {
 
     /* setter and getter */
 
-    public void setDownPath(String downPath) {
-        this.downPath = downPath;
+    public void setIngPath(String ingPath) {
+        this.ingPath = ingPath;
     }
 
-    public void setUpPath(String upPath) {
-        this.upPath = upPath;
+    public void setEdPath(String edPath) {
+        this.edPath = edPath;
     }
 
     public void setTransPath(String transPath) {

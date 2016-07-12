@@ -19,7 +19,7 @@ public class UploadClientServiceTest {
 
     private void start() throws Exception {
         UploadClient client = new UploadClient();
-        client.setRelPath("src/main/");
+        client.setEdPath("src/main/");
         Err error = client.upload("127.0.0.1", 9090, "pom.xml", 5);
         if(error.getErrCode() != Err.OK)
             System.out.println("failure");

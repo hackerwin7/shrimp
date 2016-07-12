@@ -3,6 +3,7 @@ package com.github.hackerwin7.shrimp.thrift.client;
 import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
+import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
@@ -74,6 +75,15 @@ public class ControllerClient {
         TProtocol protocol = new TBinaryProtocol(transport);
         TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Controller");
         client = new TControllerService.Client(mp);
+    }
+
+    /**
+     * send pool to controller
+     * @param pool
+     * @throws TException
+     */
+    public void sendPool(TFilePool pool) throws TException {
+        client.sendFilePool(pool);
     }
 
     /**
