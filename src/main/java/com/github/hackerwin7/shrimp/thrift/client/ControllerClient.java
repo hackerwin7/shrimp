@@ -14,6 +14,7 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by IntelliJ IDEA.
@@ -52,6 +53,17 @@ public class ControllerClient {
     }
 
     /**
+     * constructor host and port
+     * @param host
+     * @param port
+     * @throws Exception
+     */
+    public ControllerClient(String host, int port) throws Exception {
+        this.host = host;
+        this.port = port;
+    }
+
+    /**
      * constructor with zk driver
      * @param zks
      * @throws Exception
@@ -75,6 +87,15 @@ public class ControllerClient {
         TProtocol protocol = new TBinaryProtocol(transport);
         TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Controller");
         client = new TControllerService.Client(mp);
+    }
+
+    /**
+     * send pools to controller
+     * @param pools
+     * @throws TException
+     */
+    public void sendPools(Map<String, TFilePool> pools) throws TException {
+        client.sendFilePools(pools);
     }
 
     /**

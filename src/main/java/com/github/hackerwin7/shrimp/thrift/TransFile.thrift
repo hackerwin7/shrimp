@@ -137,7 +137,12 @@ service TControllerService {
     /**
     * send a file pool info to the controller
     **/
-    oneway void sendFilePool(1:TFilePool pool)
+    oneway void sendFilePool(1:TFilePool pool),
+
+    /**
+    * heartbeat send file pools
+    **/
+    oneway void sendFilePools(1:map<string, TFilePool> pools)
 }
 
 /*

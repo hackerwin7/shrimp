@@ -36,6 +36,17 @@ public class TControllerServiceHandler implements TControllerService.Iface {
     private int findAccount = 3;
 
     /**
+     * send pools info to controller server
+     * @param pools
+     * @throws TException
+     */
+    @Override
+    public void sendFilePools(Map<String, TFilePool> pools) throws TException {
+        this.pools.clear();
+        this.pools.putAll(pools);
+    }
+
+    /**
      * send file pool to the controller server
      * @param pool
      * @throws TException
@@ -281,5 +292,9 @@ public class TControllerServiceHandler implements TControllerService.Iface {
 
     public void setFindAccount(int findAccount) {
         this.findAccount = findAccount;
+    }
+
+    public Map<String, TFilePool> getPools() {
+        return pools;
     }
 }
