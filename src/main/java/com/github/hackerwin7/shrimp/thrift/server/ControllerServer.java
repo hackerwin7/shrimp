@@ -2,6 +2,7 @@ package com.github.hackerwin7.shrimp.thrift.server;
 
 import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
+import com.github.hackerwin7.shrimp.thrift.gen.TOperation;
 import com.github.hackerwin7.shrimp.thrift.impl.TControllerServiceHandler;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
@@ -30,10 +31,14 @@ public class ControllerServer {
     private int port = 9097;
 
     /* driver */
-    TControllerServiceHandler handler = null;
+    private TControllerServiceHandler handler = null;
+
+    /* driver */
+    private TServer server = null;
+    private Thread thread = null;
 
     /**
-     * start controller server using the port
+     * startCon controller server using the port
      * @param port
      * @throws Exception
      */
@@ -52,7 +57,8 @@ public class ControllerServer {
                 }
             }
         };
-        new Thread(simple).start();
+        thread = new Thread(simple);
+        thread.start();
     }
 
     /**
@@ -64,15 +70,28 @@ public class ControllerServer {
     }
 
     /**
-     * thrift start
+     * thrift startCon
      * @param processor
      * @throws Exception
      */
     private void simple(TMultiplexedProcessor processor) throws Exception {
         TServerTransport serverTransport = new TServerSocket(port);
-        TServer server = new TThreadPoolServer(new TThreadPoolServer.Args(serverTransport).processor(processor));
+        server = new TThreadPoolServer(new TThreadPoolServer.Args(serverTransport).processor(processor));
         LOG.debug("starting the thrift controller ......");
         server.serve();
+    }
+
+    /**
+     * close the thrift server
+     * @throws Exception
+     */
+    public void close() throws Exception {
+        if(server != null)
+            server.stop();
+        while (thread.isAlive()) {
+            LOG.info("waiting the thrift server thread stopping ......");
+            Thread.sleep(3000);
+        }
     }
 
     /**
@@ -81,5 +100,11 @@ public class ControllerServer {
      */
     public Map<String, TFilePool> getPools() {
         return handler.getPools();
+    }
+
+    /* getter and setter */
+
+    public TOperation getOp() throws Exception {
+        return handler.getOp();
     }
 }

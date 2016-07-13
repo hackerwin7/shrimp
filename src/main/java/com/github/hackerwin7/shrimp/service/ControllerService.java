@@ -3,6 +3,7 @@ package com.github.hackerwin7.shrimp.service;
 import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
+import com.github.hackerwin7.shrimp.thrift.gen.TOperation;
 import com.github.hackerwin7.shrimp.thrift.server.ControllerServer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -11,6 +12,7 @@ import org.apache.zookeeper.CreateMode;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by IntelliJ IDEA.
@@ -22,8 +24,11 @@ import java.util.TimerTask;
  *          controller send heartbeat (file pool info replica) to the secondary, when master crash (zk ephemeral node not exists) :
  *                                                      secondary kill the master
  *                                                      secondary change the zk (create new ephemeral node) that all server target to secondary
- *                                                      secondary start the killed master controller as the new secondary controller
+ *                                                      secondary startCon the killed master controller as the new secondary controller
  *                                                      secondary -> master, master -> secondary
+ *       controller and secondary controller is all controller service, but a different is that :
+ *          1. zk controller and sec-controller
+ *          2. secondary controller do not send the heartbeat but it also must startCon thrift controller to receive the heartbeat
  * Tips:
  */
 public class ControllerService {
@@ -35,6 +40,8 @@ public class ControllerService {
     private String zkstr = null;
     private String ip = null;
     private int port = 9097;
+    private String secIp = null;
+    private int secPort = 9097;
 
     /* constants */
     public static final String ZK_ROOT = "/shrimp";
@@ -42,20 +49,97 @@ public class ControllerService {
     public static final String ZK_SEC_CONTROLLER = "/sec-controller";
 
     /* driver */
-    private ControllerServer tController = null;
     private ZkClient zk = null;
+
+    /* thread main and sub*/
+    private ControllerServer tController = null;
     private Timer timer = null;
+    private Thread signal = null;
+    private Thread trans = null;
+
+    /* signal */
+    private AtomicBoolean transRunning = new AtomicBoolean(true);
+
+    /**
+     * service start
+     * check the zk to decide to start controller or secondary controller
+     * @throws Exception
+     */
+    public void start() throws Exception {
+        ZkClient client = new ZkClient(zkstr);
+        if(!client.exists(ZK_ROOT)) {
+            startCon();
+        } else {
+            if(!client.exists(ZK_ROOT + ZK_CONTROLLER))
+                startCon();
+            else
+                if(!client.exists(ZK_ROOT + ZK_SEC_CONTROLLER))
+                    startSec();
+                else
+                    LOG.error("no need to start service, all path have own value...");
+        }
+        client.close();
+    }
 
     /**
      * start the controller service
      * 1.register zk info
-     * 2.start thrift controller server
-     * 3.start the heartbeat to send the info to secondary (timer heartbeat send)
+     * 2.startCon thrift controller server as main thread
+     * 3.startCon the heartbeat to send the info to secondary (timer heartbeat send) as sub-thread
+     * 4.startCon signal as sub-thread
      * @throws Exception
      */
-    public void start() throws Exception {
+    public void startCon() throws Exception {
         zk();
         thrift();
+        heartbeat();
+        signal();
+    }
+
+    /**
+     * startCon as a secondary controller
+     * @throws Exception
+     */
+    public void startSec() throws Exception {
+        zkSec();
+        thrift();
+        signal();
+        transfer();
+    }
+
+    /**
+     * controller transfer to secondary controller
+     * whole close and startCon as a secondary controller
+     * @throws Exception
+     */
+    public void trans2Sec() throws Exception {
+        close();
+        startSec();
+    }
+
+    /**
+     * sec-controller change into controller
+     * 1. change zk (waiting the old zk node killed), kill the sec and change into master
+     * 2. startCon heartbeat
+     * how to trigger the transfer ???
+     * @throws Exception
+     */
+    public void trans2Cont() throws Exception {
+        /* waiting and change zk */
+        while (zk.exists(ZK_ROOT + ZK_CONTROLLER)) {
+            Thread.sleep(3000);
+            LOG.info("waiting the old master controller exiting ......");
+        }
+        String val = null;
+        if(zk.exists(ZK_ROOT + ZK_SEC_CONTROLLER)) {
+            val = zk.get(ZK_ROOT + ZK_SEC_CONTROLLER);
+            zk.delete(ZK_ROOT + ZK_SEC_CONTROLLER);
+        } else {
+            val = ip + ":" + port;
+        }
+        zk.create(ZK_ROOT + ZK_CONTROLLER, val, CreateMode.EPHEMERAL);
+
+        /* heartbeat */
         heartbeat();
     }
 
@@ -71,10 +155,28 @@ public class ControllerService {
             zk.create(ZK_ROOT, null);
         if(!zk.exists(ZK_ROOT + ZK_CONTROLLER))
             zk.create(ZK_ROOT + ZK_CONTROLLER, ip + ":" + port, CreateMode.EPHEMERAL);
+        else
+            throw new Exception("zk node is not clean !!! ");
     }
 
     /**
-     * start the thrift controller server and start to provide service
+     * secondary zk startCon
+     * @throws Exception
+     */
+    private void zkSec() throws Exception {
+        if(zk == null)
+            zk = new ZkClient(zkstr);
+        /* zk node config */
+        if(!zk.exists(ZK_ROOT))
+            zk.create(ZK_ROOT, null);
+        while (zk.exists(ZK_ROOT + ZK_SEC_CONTROLLER)) {
+            Thread.sleep(3000); // waiting the old second controller exiting......
+        }
+        zk.create(ZK_ROOT + ZK_SEC_CONTROLLER, ip + ":" + port, CreateMode.EPHEMERAL);
+    }
+
+    /**
+     * startCon the thrift controller server and startCon to provide service
      * @throws Exception
      */
     private void thrift() throws Exception {
@@ -110,18 +212,22 @@ public class ControllerService {
             try {
                 if(!zk.exists(ZK_ROOT + ZK_SEC_CONTROLLER)) {
                     cnt++;
-                    if(cnt >= RETRY_COUNT)
-                        reloadSecController();
+                    if(cnt >= RETRY_COUNT) {
+                        int signal = reloadSecController();
+                        if(signal == 1)
+                            LOG.error("restart secondary controller failed, no zk sec-controller node value !!!");
+                        cnt = 0;
+                    }
                 } else {
                     /* get secondary info from zk */
                     String data = zk.get(ZK_ROOT + ZK_SEC_CONTROLLER);
                     String[] arr = StringUtils.split(data, ":");
-                    String host = arr[0];
-                    int port = Integer.parseInt(arr[1]);
+                    secIp = arr[0];
+                    secPort = Integer.parseInt(arr[1]);
                     /* get the pool info from the controller handler */
                     Map<String, TFilePool> pools = tController.getPools();
-                    /* start the client to send the info to the secondary controller */
-                    ControllerClient client = new ControllerClient(host, port);
+                    /* startCon the client to send the info to the secondary controller */
+                    ControllerClient client = new ControllerClient(secIp, secPort);
                     client.open();
                     client.sendPools(pools);
                     client.close();
@@ -133,13 +239,75 @@ public class ControllerService {
     }
 
     /**
-     * restart the crash secondary controller
-     * how to kill and reload the remote controller ??
-     *  1.ssh ?
+     * send a signal to restart the secondary controller
+     * @return signal 0 success, 1 failure
      * @throws Exception
      */
-    private void reloadSecController() throws Exception {
+    private int reloadSecController() throws Exception {
+        if(!StringUtils.isBlank(secIp)) { // if secIp null, waiting the secondary fill the zk node value
+            ControllerClient client = new ControllerClient(secIp, secPort);
+            client.open();
+            client.sendOp(TOperation.restart);
+            client.close();
+            return 0;
+        } else {
+            return 1;
+        }
+    }
 
+    /**
+     * signal thread to receive operation
+     * @throws Exception
+     */
+    private void signal() throws Exception {
+        if(signal == null || !signal.isAlive()) {
+            signal = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try {
+                            TOperation op = tController.getOp();
+                            if (op == TOperation.restart) { // restart the whole service
+                                close();
+                                startSec();
+                            }
+                            Thread.sleep(2000);
+                        } catch (Exception | Error e) {
+                            LOG.error(e.getMessage(), e);
+                        }
+                    }
+                }
+            });
+            signal.start();
+        }
+    }
+
+    /**
+     * transfer thread to check the master controller zk path available
+     * @throws Exception
+     */
+    private void transfer() throws Exception {
+        if(trans == null || !trans.isAlive()) {
+            trans = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    transRunning.set(true);
+                    while (transRunning.get()) {
+                        try {
+                            if(!zk.exists(ZK_ROOT + ZK_CONTROLLER)) {
+                                //transfer the sec-controller to controller and restart the controller to sec-controller
+                                LOG.debug("transfer to master controller......");
+                                trans2Cont();
+                            }
+                            Thread.sleep(3000);
+                        } catch (Exception | Error e) {
+                            LOG.error(e.getMessage(), e);
+                        }
+                    }
+                }
+            });
+            trans.start();
+        }
     }
 
     /**
@@ -147,9 +315,21 @@ public class ControllerService {
      * @throws Exception
      */
     public void close() throws Exception {
-        if(zk != null)
+        if(zk != null) {
             zk.close();
-        if(timer != null)
+            zk = null;
+        }
+        if(tController != null) {
+            tController.close();
+            tController = null;
+        }
+        if(timer != null) {
             timer.cancel();
+            timer = null;
+        }
+        if(trans != null) {
+            transRunning.set(false);
+        }
+        //could not close the signal, it can not kill itself (signal can not close signal)
     }
 }

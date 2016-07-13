@@ -14,7 +14,8 @@ import org.apache.thrift.TEnum;
 public enum TOperation implements org.apache.thrift.TEnum {
   download(0),
   upload(1),
-  heartbeat(2);
+  heartbeat(2),
+  restart(3);
 
   private final int value;
 
@@ -41,6 +42,8 @@ public enum TOperation implements org.apache.thrift.TEnum {
         return upload;
       case 2:
         return heartbeat;
+      case 3:
+        return restart;
       default:
         return null;
     }

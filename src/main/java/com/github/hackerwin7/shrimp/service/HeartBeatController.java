@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * User: hackerwin7
  * Date: 2016/07/11
  * Time: 10:28 AM
- * Desc: every server send a heartbeat constantly (start send and every minute send)
+ * Desc: every server send a heartbeat constantly (startCon send and every minute send)
  *          it's also a controller client sample
  * Tips:
  */
@@ -31,7 +31,7 @@ public class HeartBeatController {
     private AtomicBoolean running = new AtomicBoolean(true);
 
     /* constants */
-    public static final long SLEEP_INTERVAL = 50000;
+    public static final long SLEEP_INTERVAL = 10000;
     public static final int RAND_SLEEP_SEC = 20;
 
     /* relative path */
@@ -52,7 +52,7 @@ public class HeartBeatController {
     }
 
     /**
-     * start the controller to be running
+     * startCon the controller to be running
      */
     public void start() {
         Thread thread = new Thread(new Runnable() {
@@ -78,7 +78,7 @@ public class HeartBeatController {
      * main process
      * 1.scan the relative path to get the file pool info
      * 2.sleep the random seconds (avoid hot spot)
-     * 3.start the controller client and send the file pool info to controller server
+     * 3.startCon the controller client and send the file pool info to controller server
      * @throws Exception
      */
     private void proc() throws Exception {
@@ -135,7 +135,7 @@ public class HeartBeatController {
     }
 
     /**
-     * start the conn to controller and send the pool info to the controller
+     * startCon the conn to controller and send the pool info to the controller
      * @throws Exception
      */
     private void send(TFilePool pool) throws Exception {

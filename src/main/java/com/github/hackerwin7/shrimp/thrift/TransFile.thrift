@@ -57,7 +57,7 @@ service TDFileService {
     /**
     * open connection
     * name : file name
-    * start : download offset
+    * startCon : download offset
     */
     TFileInfo open(1:string name, 2:i64 start),
 
@@ -111,6 +111,16 @@ struct TFilePool {
     3: map<string, TFileInfo> pool
 }
 
+/*
+* RPC communication
+* */
+enum TOperation {
+    download = 0,
+    upload = 1,
+    heartbeat = 2,
+    restart = 3
+}
+
 /**
 * controller service, info transportation
 **/
@@ -142,16 +152,12 @@ service TControllerService {
     /**
     * heartbeat send file pools
     **/
-    oneway void sendFilePools(1:map<string, TFilePool> pools)
-}
+    oneway void sendFilePools(1:map<string, TFilePool> pools),
 
-/*
-* RPC communication
-* */
-enum TOperation {
-    download = 0,
-    upload = 1,
-    heartbeat = 2
+    /**
+    * signal such as reload operation
+    **/
+    oneway void sendSignal(1:TOperation op)
 }
 
 /**

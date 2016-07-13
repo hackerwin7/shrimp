@@ -46,7 +46,7 @@ public class UploadClient {
     private Err error = null;
 
     /**
-     * start client to upload file
+     * startCon client to upload file
      * @param host
      * @param port
      * @param fileName
@@ -98,7 +98,7 @@ public class UploadClient {
         //before the upload , inform the controller the file information
         inform(info);
 
-        client.open(info); // server receive the info, and start writing to wait the file chunk from the queue
+        client.open(info); // server receive the info, and startCon writing to wait the file chunk from the queue
 
         /* client processing */
         reading(info);// reading and sending

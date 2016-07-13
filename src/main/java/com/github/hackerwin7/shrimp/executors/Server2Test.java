@@ -21,7 +21,7 @@ public class Server2Test {
         mServer.setTransPath("src/data/server2/ed/");
         mServer.start(9092);
 
-        //register to controller, firstly start controller
+        //register to controller, firstly startCon controller
         ControllerClient controller = new ControllerClient();
         controller.open();
         controller.register(Utils.ip() + ":" + 9092);

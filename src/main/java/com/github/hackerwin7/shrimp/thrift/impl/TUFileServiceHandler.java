@@ -77,7 +77,7 @@ public class TUFileServiceHandler implements TUFileService.Iface {
 
     /**
      * write the chunk into the disk from the queue
-     * start the writing thread
+     * startCon the writing thread
      * @param info
      * @throws Exception
      */

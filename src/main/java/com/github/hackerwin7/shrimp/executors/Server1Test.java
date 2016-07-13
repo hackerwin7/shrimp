@@ -25,13 +25,13 @@ public class Server1Test {
         mServer.setTransPath("src/data/server1/ed/");
         mServer.start(9091);
 
-        //register to controller, firstly start controller
+        //register to controller, firstly startCon controller
         ControllerClient controller = new ControllerClient();
         controller.open();
         controller.register(Utils.ip() + ":" + 9091);
         controller.close();
 
-        //start heartbeat
+        //startCon heartbeat
         HeartBeatController hb = new HeartBeatController(Utils.ip(), 9091);
         hb.setPath("src/data/server1/ed/");
         hb.start();
@@ -40,7 +40,7 @@ public class Server1Test {
     }
 
     private void start1() throws Exception {
-        //register to controller, firstly start controller
+        //register to controller, firstly startCon controller
         ControllerClient controller = new ControllerClient();
         controller.open();
         controller.register(Utils.ip() + ":" + 9091);

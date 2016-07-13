@@ -37,14 +37,14 @@ public class ControllerServerTest {
             String host = arr[0];
             int port = Integer.parseInt(arr[1]);
             if(StringUtils.equals(host, localHost)) {
-                // start controller
+                // startCon controller
                 controller = new ControllerServer();
                 controller.start(port);
             } else {
                 //nothing
             }
         } else {
-            // start controller
+            // startCon controller
             controller = new ControllerServer();
             controller.start(dport);
             //update the zk path

@@ -4,6 +4,7 @@ import com.github.hackerwin7.shrimp.thrift.client.TransClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
+import com.github.hackerwin7.shrimp.thrift.gen.TOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
@@ -12,6 +13,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Created by IntelliJ IDEA.
@@ -34,6 +37,25 @@ public class TControllerServiceHandler implements TControllerService.Iface {
 
     /* signal */
     private int findAccount = 3;
+
+    /* signal queue */
+    private BlockingQueue<TOperation> signalQ = new LinkedBlockingQueue<>(1024);
+
+    /**
+     * send operation signal
+     * @param op
+     * @throws TException
+     */
+    @Override
+    public void sendSignal(TOperation op) throws TException {
+        try {
+            if(op != null)
+                signalQ.put(op);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+            throw new TException("signal queue put error");
+        }
+    }
 
     /**
      * send pools info to controller server
@@ -296,5 +318,9 @@ public class TControllerServiceHandler implements TControllerService.Iface {
 
     public Map<String, TFilePool> getPools() {
         return pools;
+    }
+
+    public TOperation getOp() throws Exception {
+        return signalQ.take();
     }
 }

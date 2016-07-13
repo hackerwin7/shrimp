@@ -65,12 +65,12 @@ public class DownloadClient {
     }
 
     /**
-     * start client to download the file
+     * startCon client to download the file
      * @param host
      * @param port
      * @param fileName
      * @param offset , this offset indicate that the current offset has not been write
-     *               start is the offset which haven't been write, write = (start - 1) + 1, (start - 1) indicate the offset have been write
+     *               startCon is the offset which haven't been write, write = (startCon - 1) + 1, (startCon - 1) indicate the offset have been write
      * @return Err class
      * @throws Exception
      */
@@ -80,7 +80,7 @@ public class DownloadClient {
         error = new Err();
         error.setCommitOffset(offset);
 
-        /* start client */
+        /* startCon client */
         TTransport transport = new TSocket(host, port);
         transport.open();
         TProtocol protocol = new TBinaryProtocol(transport);
@@ -141,13 +141,13 @@ public class DownloadClient {
      * @throws Exception
      */
     private int perform(TDFileService.Client client, String fileName, long start) throws Exception {
-        long fetch = start; // start is offset that haven't been write
+        long fetch = start; // startCon is offset that haven't been write
         TFileInfo info = client.open(fileName, start);
 
-        /* start writing */
+        /* startCon writing */
         writing(fileName, start, info);
 
-        /* start receive file chunk from the server */
+        /* startCon receive file chunk from the server */
         while (fetch < info.length) {
             TFileChunk chunk = client.getChunk();
             if(chunk != null) {
@@ -182,7 +182,7 @@ public class DownloadClient {
     }
 
     /**
-     * start writing thread
+     * startCon writing thread
      * @throws Exception
      */
     private void writing(String fileName, long start, TFileInfo info) throws Exception {
@@ -190,7 +190,7 @@ public class DownloadClient {
             @Override
             public void run() {
                 //record write offset for error code using
-                long write = start; // start is the offset which haven't been write, write = (start - 1) + 1, (start - 1) indicate the offset have been write
+                long write = start; // startCon is the offset which haven't been write, write = (startCon - 1) + 1, (startCon - 1) indicate the offset have been write
                 try {
                     boolean isTaken = false;
                     RandomAccessFile raf = new RandomAccessFile(new File(ingPath + fileName),

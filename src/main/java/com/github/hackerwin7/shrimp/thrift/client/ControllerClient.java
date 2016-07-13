@@ -4,6 +4,7 @@ import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
+import com.github.hackerwin7.shrimp.thrift.gen.TOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
@@ -87,6 +88,15 @@ public class ControllerClient {
         TProtocol protocol = new TBinaryProtocol(transport);
         TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Controller");
         client = new TControllerService.Client(mp);
+    }
+
+    /**
+     * send op to controller server
+     * @param op
+     * @throws TException
+     */
+    public void sendOp(TOperation op) throws TException {
+        client.sendSignal(op);
     }
 
     /**
