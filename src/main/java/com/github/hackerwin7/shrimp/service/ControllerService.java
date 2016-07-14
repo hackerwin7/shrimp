@@ -1,6 +1,8 @@
 package com.github.hackerwin7.shrimp.service;
 
+import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
 import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
+import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
 import com.github.hackerwin7.shrimp.thrift.gen.TOperation;
@@ -9,7 +11,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 
+import java.io.InputStream;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,15 +42,17 @@ public class ControllerService {
 
     /* data */
     private String zkstr = null;
-    private String ip = null;
-    private int port = 9097;
-    private String secIp = null;
-    private int secPort = 9097;
+    private String ip = null; // local controller ip (maybe also secondary controller)
+    private int port = 9097; // local controller port
+    private String secIp = null; // secondary controller ip
+    private int secPort = 9097; // secondary controller port
 
     /* constants */
     public static final String ZK_ROOT = "/shrimp";
     public static final String ZK_CONTROLLER = "/controller";
     public static final String ZK_SEC_CONTROLLER = "/sec-controller";
+    public static final String CONF_CONTROLLER = "controller.properties";
+    public static final String CONF_SHELL = "config.controller";
 
     /* driver */
     private ZkClient zk = null;
@@ -61,11 +67,57 @@ public class ControllerService {
     private AtomicBoolean transRunning = new AtomicBoolean(true);
 
     /**
+     * default reload constructor
+     */
+    public ControllerService() {
+
+    }
+
+    /**
+     * constructor
+     * @param zks
+     * @param ip
+     * @param port
+     */
+    public ControllerService(String zks, String ip, int port) {
+        this.zkstr = zks;
+        this.ip = ip;
+        this.port = port;
+    }
+
+    /**
+     * start the controller service
+     * @throws Exception
+     */
+    public void start() throws Exception {
+        load();
+        run();
+    }
+
+    /**
+     * load config from file
+     * @throws Exception
+     */
+    private void load() throws Exception {
+        if(StringUtils.isBlank(zkstr) || StringUtils.isBlank(ip)) {
+            InputStream is = CommonUtils.file2in(CONF_CONTROLLER, CONF_SHELL);
+            Properties prop = new Properties();
+            prop.load(is);
+            ip = prop.getProperty("host");
+            if (StringUtils.isBlank(ip))
+                ip = Utils.ip();
+            port = Integer.parseInt(prop.getProperty("port"));
+            zkstr = prop.getProperty("zookeeper.connect");
+            is.close();
+        }
+    }
+
+    /**
      * service start
      * check the zk to decide to start controller or secondary controller
      * @throws Exception
      */
-    public void start() throws Exception {
+    private void run() throws Exception {
         ZkClient client = new ZkClient(zkstr);
         if(!client.exists(ZK_ROOT)) {
             startCon();
@@ -73,10 +125,10 @@ public class ControllerService {
             if(!client.exists(ZK_ROOT + ZK_CONTROLLER))
                 startCon();
             else
-                if(!client.exists(ZK_ROOT + ZK_SEC_CONTROLLER))
-                    startSec();
-                else
-                    LOG.error("no need to start service, all path have own value...");
+            if(!client.exists(ZK_ROOT + ZK_SEC_CONTROLLER))
+                startSec();
+            else
+                LOG.error("no need to start service, all path have own value...");
         }
         client.close();
     }

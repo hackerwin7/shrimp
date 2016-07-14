@@ -40,15 +40,18 @@ public class HeartBeatController {
     /* data */
     private String host = null;
     private int port = 9091;
+    private String zks = null;
 
     /**
      * constructor
-     * @param host
-     * @param port
+     * @param zk conn string, use to find the target host and target port
+     * @param host, local server's host
+     * @param port, local server's port
      */
-    public HeartBeatController(String host, int port) {
+    public HeartBeatController(String zks, String host, int port) {
         this.host = host;
         this.port = port;
+        this.zks = zks;
     }
 
     /**
@@ -139,7 +142,7 @@ public class HeartBeatController {
      * @throws Exception
      */
     private void send(TFilePool pool) throws Exception {
-        ControllerClient controller = new ControllerClient();
+        ControllerClient controller = new ControllerClient(zks);
         controller.open();
         controller.sendPool(pool);
         controller.close();

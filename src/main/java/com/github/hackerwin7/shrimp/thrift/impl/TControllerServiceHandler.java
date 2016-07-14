@@ -66,6 +66,9 @@ public class TControllerServiceHandler implements TControllerService.Iface {
     public void sendFilePools(Map<String, TFilePool> pools) throws TException {
         this.pools.clear();
         this.pools.putAll(pools);
+
+        //debug show pools
+        LOG.debug("=======> pools refresh : " + this.pools);
     }
 
     /**

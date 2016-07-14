@@ -1,4 +1,4 @@
-package com.github.hackerwin7.shrimp.executors;
+package com.github.hackerwin7.shrimp.test;
 
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
@@ -32,7 +32,7 @@ public class Server1Test {
         controller.close();
 
         //startCon heartbeat
-        HeartBeatController hb = new HeartBeatController(Utils.ip(), 9091);
+        HeartBeatController hb = new HeartBeatController("127.0.0.1:2181", Utils.ip(), 9091);
         hb.setPath("src/data/server1/ed/");
         hb.start();
 

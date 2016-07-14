@@ -1,4 +1,4 @@
-package com.github.hackerwin7.shrimp.executors;
+package com.github.hackerwin7.shrimp.test;
 
 import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
 

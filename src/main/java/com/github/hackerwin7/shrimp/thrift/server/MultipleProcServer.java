@@ -28,6 +28,7 @@ public class MultipleProcServer {
 
     /* driver */
     private TMultiplexedProcessor processor = new TMultiplexedProcessor();
+    private TServer server = null;
 
     /* data */
     private int port = 9090;
@@ -74,8 +75,16 @@ public class MultipleProcServer {
      */
     private void simple(TMultiplexedProcessor processor) throws Exception {
         TServerTransport serverTransport = new TServerSocket(port);
-        TServer server = new TThreadPoolServer(new TThreadPoolServer.Args(serverTransport).processor(processor));
+        server = new TThreadPoolServer(new TThreadPoolServer.Args(serverTransport).processor(processor));
         server.serve();
+    }
+
+    /**
+     * close the thrift server
+     */
+    public void close() {
+        if(server != null)
+            server.stop();
     }
 
     /* setter and getter */

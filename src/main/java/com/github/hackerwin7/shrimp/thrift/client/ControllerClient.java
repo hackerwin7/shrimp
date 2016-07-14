@@ -44,7 +44,7 @@ public class ControllerClient {
     private TControllerService.Client client = null;
 
     /**
-     * load the zk string with the conf file
+     * load the zk string with the conf file, default is localhost
      * @throws Exception
      */
     public ControllerClient() throws Exception {
@@ -54,9 +54,18 @@ public class ControllerClient {
     }
 
     /**
+     * init zk
+     * @param zks
+     * @throws Exception
+     */
+    public ControllerClient(String zks) throws Exception {
+        init(zks);
+    }
+
+    /**
      * constructor host and port
-     * @param host
-     * @param port
+     * @param host, controller server's host not client it's target host
+     * @param port, controller server's
      * @throws Exception
      */
     public ControllerClient(String host, int port) throws Exception {

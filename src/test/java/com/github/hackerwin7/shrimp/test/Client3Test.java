@@ -1,4 +1,4 @@
-package com.github.hackerwin7.shrimp.executors;
+package com.github.hackerwin7.shrimp.test;
 
 import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.thrift.client.DownloadClient;
@@ -16,7 +16,7 @@ public class Client3Test {
         DownloadClient download = new DownloadClient();
         download.setIngPath("src/data/server3/ing/");
         download.setEdPath("src/data/server3/ed/");
-        Err err = download.download("shrimp.iml", 4);
+        Err err = download.download("shrimp.iml", 0);
         if(err.getErrCode() != Err.OK)
             System.out.println("failure");
         else
