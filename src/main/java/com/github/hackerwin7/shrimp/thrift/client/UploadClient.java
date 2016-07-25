@@ -45,6 +45,13 @@ public class UploadClient {
     /* error code */
     private Err error = null;
 
+    /* data */
+    private String zks = null;
+
+    public UploadClient(String zks) {
+        this.zks = zks;
+    }
+
     /**
      * startCon client to upload file
      * @param host
@@ -54,21 +61,24 @@ public class UploadClient {
      * @return
      * @throws Exception
      */
-    public Err upload(String host, int port, String fileName, long offset) throws Exception {
+    public Err upload(String host, int port, String fileName, long offset) throws TException {
         error = new Err();
         error.setCommitOffset(offset);
-        TTransport transport = new TSocket(host, port);
-        transport.open();
-        TProtocol protocol = new TBinaryProtocol(transport);
-        TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Upload");
-        TUFileService.Client client = new TUFileService.Client(mp);
+        TTransport transport = null;
         try {
+            transport = new TSocket(host, port);
+            transport.open();
+            TProtocol protocol = new TBinaryProtocol(transport);
+            TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Upload");
+            TUFileService.Client client = new TUFileService.Client(mp);
             perform(client, fileName, offset);
         } catch (Exception | Error e) {
             LOG.error(e.getMessage(), e);
             error.setErrCode(Err.UPLOAD_FAIL);
+        } finally {
+            if(transport != null)
+                transport.close();
         }
-        transport.close();
         return error;
     }
 
@@ -81,7 +91,7 @@ public class UploadClient {
      * @throws TException
      */
     public Err upload(String host, int port, String fileName) throws TException {
-        return upload(host, port, fileName);
+        return upload(host, port, fileName, 0L);
     }
 
     /**
@@ -93,19 +103,25 @@ public class UploadClient {
      * @throws Exception
      */
     private int perform(TUFileService.Client client, String fileName, long start) throws Exception {
-        TFileInfo info = open(fileName, start);
 
-        //before the upload , inform the controller the file information
-        inform(info);
+        try {
+            TFileInfo info = open(fileName, start);
 
-        client.open(info); // server receive the info, and startCon writing to wait the file chunk from the queue
+            //before the upload , inform the controller the file information
+            inform(info);
+
+            client.open(info); // server receive the info, and startCon writing to wait the file chunk from the queue
 
         /* client processing */
-        reading(info);// reading and sending
-        sending(client, info);
-        checking(client, info);
-
-        client.close();
+            reading(info);// reading and sending
+            sending(client, info);
+            checking(client, info);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+        } finally {
+            if(client != null)
+                client.close();
+        }
         return 0;
     }
 
@@ -115,10 +131,17 @@ public class UploadClient {
      * @throws Exception
      */
     private void inform(TFileInfo info) throws Exception {
-        ControllerClient controller = new ControllerClient();
-        controller.open();
-        controller.sendInfo(info);
-        controller.close();
+        ControllerClient controller = null;
+        try {
+            controller = new ControllerClient(zks);
+            controller.open();
+            controller.sendInfo(info);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+        } finally {
+            if(controller != null)
+                controller.close();
+        }
     }
 
     /**
@@ -145,13 +168,14 @@ public class UploadClient {
      * @param info
      * @throws Exception
      */
-    private void reading(TFileInfo info) throws Exception {
+    private void reading(final TFileInfo info) throws Exception {
         readThread = new Thread(new Runnable() {
             @Override
             public void run() {
+                RandomAccessFile raf = null;
                 try {
                     String path = edPath + info.getName();
-                    RandomAccessFile raf = new RandomAccessFile(new File(path), "r");
+                    raf = new RandomAccessFile(new File(path), "r");
                     raf.seek(info.getStart());
                     long index = info.getStart();
                     long left = info.length - info.getStart();
@@ -173,10 +197,16 @@ public class UploadClient {
                         if(left < read)
                             read = (int) left;
                     }
-                    raf.close();
                 } catch (Exception | Error e) {
                     LOG.error(e.getMessage(), e);
                     error.setErrCode(Err.UPLOAD_FAIL);
+                } finally {
+                    if(raf != null)
+                        try {
+                            raf.close();
+                        } catch (Exception | Error e) {
+                            LOG.error(e.getMessage(), e);
+                        }
                 }
             }
         });

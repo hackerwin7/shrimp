@@ -79,7 +79,7 @@ public class TDFileServiceHandler implements TDFileService.Iface {
      * @param startOffset
      * @param info
      */
-    private void reading(long startOffset, TFileInfo info) {
+    private void reading(final long startOffset, final TFileInfo info) {
         readThread = new Thread(new Runnable() {
             @Override
             public void run() {

@@ -2,6 +2,7 @@ package com.github.hackerwin7.shrimp.service;
 
 import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
 import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
+import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
@@ -33,6 +34,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       controller and secondary controller is all controller service, but a different is that :
  *          1. zk controller and sec-controller
  *          2. secondary controller do not send the heartbeat but it also must startCon thrift controller to receive the heartbeat
+ *
+ *
+ *
+ *       load config from the file
  * Tips:
  */
 public class ControllerService {
@@ -57,7 +62,7 @@ public class ControllerService {
     /* driver */
     private ZkClient zk = null;
 
-    /* thread main and sub*/
+    /* thread start and sub*/
     private ControllerServer tController = null;
     private Timer timer = null;
     private Thread signal = null;
@@ -100,15 +105,22 @@ public class ControllerService {
      */
     private void load() throws Exception {
         if(StringUtils.isBlank(zkstr) || StringUtils.isBlank(ip)) {
-            InputStream is = CommonUtils.file2in(CONF_CONTROLLER, CONF_SHELL);
-            Properties prop = new Properties();
-            prop.load(is);
-            ip = prop.getProperty("host");
-            if (StringUtils.isBlank(ip))
-                ip = Utils.ip();
-            port = Integer.parseInt(prop.getProperty("port"));
-            zkstr = prop.getProperty("zookeeper.connect");
-            is.close();
+            InputStream is = null;
+            try {
+                is = CommonUtils.file2in(CONF_CONTROLLER, CONF_SHELL);
+                Properties prop = new Properties();
+                prop.load(is);
+                ip = prop.getProperty("host");
+                if (StringUtils.isBlank(ip))
+                    ip = Utils.ip();
+                port = Integer.parseInt(prop.getProperty("port"));
+                zkstr = prop.getProperty("zookeeper.connect");
+            } catch (Exception | Error e) {
+                LOG.error(e.getMessage(), e);
+            } finally {
+                if(is != null)
+                    is.close();
+            }
         }
     }
 
@@ -118,25 +130,32 @@ public class ControllerService {
      * @throws Exception
      */
     private void run() throws Exception {
-        ZkClient client = new ZkClient(zkstr);
-        if(!client.exists(ZK_ROOT)) {
-            startCon();
-        } else {
-            if(!client.exists(ZK_ROOT + ZK_CONTROLLER))
+        ZkClient client = null;
+        try {
+            client = new ZkClient(zkstr);
+            if(!client.exists(ZK_ROOT)) {
                 startCon();
-            else
-            if(!client.exists(ZK_ROOT + ZK_SEC_CONTROLLER))
-                startSec();
-            else
-                LOG.error("no need to start service, all path have own value...");
+            } else {
+                if(!client.exists(ZK_ROOT + ZK_CONTROLLER))
+                    startCon();
+                else
+                if(!client.exists(ZK_ROOT + ZK_SEC_CONTROLLER))
+                    startSec();
+                else
+                    LOG.error("no need to start service, all path have own value...");
+            }
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+        } finally {
+            if(client != null)
+                client.close();
         }
-        client.close();
     }
 
     /**
      * start the controller service
      * 1.register zk info
-     * 2.startCon thrift controller server as main thread
+     * 2.startCon thrift controller server as start thread
      * 3.startCon the heartbeat to send the info to secondary (timer heartbeat send) as sub-thread
      * 4.startCon signal as sub-thread
      * @throws Exception
@@ -279,10 +298,17 @@ public class ControllerService {
                     /* get the pool info from the controller handler */
                     Map<String, TFilePool> pools = tController.getPools();
                     /* startCon the client to send the info to the secondary controller */
-                    ControllerClient client = new ControllerClient(secIp, secPort);
-                    client.open();
-                    client.sendPools(pools);
-                    client.close();
+                    ControllerClient client = null;
+                    try {
+                        client = new ControllerClient(secIp, secPort);
+                        client.open();
+                        client.sendPools(pools);
+                    } catch (Exception | Error e) {
+                        LOG.error(e.getMessage(), e);
+                    } finally {
+                        if(client != null)
+                            client.close();
+                    }
                 }
             } catch (Exception | Error e) {
                 LOG.error(e.getMessage(), e);
@@ -297,10 +323,17 @@ public class ControllerService {
      */
     private int reloadSecController() throws Exception {
         if(!StringUtils.isBlank(secIp)) { // if secIp null, waiting the secondary fill the zk node value
-            ControllerClient client = new ControllerClient(secIp, secPort);
-            client.open();
-            client.sendOp(TOperation.restart);
-            client.close();
+            ControllerClient client = null;
+            try {
+                client = new ControllerClient(secIp, secPort);
+                client.open();
+                client.sendOp(TOperation.restart);
+            } catch (Exception | Error e) {
+                LOG.error(e.getMessage(), e);
+            } finally {
+                if(client != null)
+                    client.close();
+            }
             return 0;
         } else {
             return 1;

@@ -1,6 +1,7 @@
 package com.github.hackerwin7.shrimp.service;
 
 import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
+import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
@@ -16,6 +17,7 @@ import java.util.Properties;
  * Date: 2016/07/14
  * Time: 11:44 AM
  * Desc: start the server to provide file transfer service
+ *          load config from file
  * Tips:
  */
 public class ServerService {
@@ -29,6 +31,7 @@ public class ServerService {
     private String ingPath = null;
     private String edPath = null;
     private String zks = null;
+    private ZkClient zk = null;
 
     /* constants */
     public static final String CONF_SERVER = "server.properties";
@@ -63,6 +66,9 @@ public class ServerService {
             edPath += "/";
         zks = prop.getProperty("zookeeper.connect");
         is.close();
+
+        /* zk client init */
+        zk = new ZkClient(zks);
     }
 
     /**
@@ -79,12 +85,12 @@ public class ServerService {
         server.setTransPath(edPath);
         server.start(port);
 
-        ControllerClient client = new ControllerClient(zks);
+        ControllerClient client = new ControllerClient(zk);
         client.open();
         client.register(host + ":" + port);
         client.close();
 
-        HeartBeatController hb = new HeartBeatController(zks, host, port);
+        HeartBeatController hb = new HeartBeatController(zk, host, port); // why too many connections ??
         hb.setPath(edPath);
         hb.start();
     }

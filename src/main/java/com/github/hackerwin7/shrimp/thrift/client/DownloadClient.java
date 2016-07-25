@@ -52,8 +52,13 @@ public class DownloadClient {
     /* controller */
     private ControllerClient controller = null;
 
-    public DownloadClient() throws Exception {
-        controller = new ControllerClient();
+    /**
+     * zk args
+     * @param zks
+     * @throws Exception
+     */
+    public DownloadClient(String zks) throws Exception {
+        controller = new ControllerClient(zks);
     }
 
     /**
@@ -81,18 +86,21 @@ public class DownloadClient {
         error.setCommitOffset(offset);
 
         /* startCon client */
-        TTransport transport = new TSocket(host, port);
-        transport.open();
-        TProtocol protocol = new TBinaryProtocol(transport);
-        TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Download");
-        TDFileService.Client client = new TDFileService.Client(mp);
+        TTransport transport = null;
         try {
+            transport = new TSocket(host, port);
+            transport.open();
+            TProtocol protocol = new TBinaryProtocol(transport);
+            TMultiplexedProtocol mp = new TMultiplexedProtocol(protocol, "Download");
+            TDFileService.Client client = new TDFileService.Client(mp);
             perform(client, fileName, offset);
         } catch (Exception | Error e) {
             LOG.error(e.getMessage(), e);
             error.setErrCode(Err.DOWNLOAD_FAIL);
+        } finally {
+            if(transport != null)
+                transport.close();
         }
-        transport.close();
         return error;
     }
 
@@ -105,6 +113,7 @@ public class DownloadClient {
      */
     public Err download(String fileName, long offset) throws TException {
         //controller find the target to download
+        Err err = null;
         try {
             controller.open();
             List<String> hps = controller.servers(fileName);
@@ -113,13 +122,15 @@ public class DownloadClient {
             String[] arr = StringUtils.split(hps.get(0), ":");
             String host = arr[0];
             int port = Integer.parseInt(arr[1]);
-            Err err = download(host, port, fileName, offset);
-            controller.close();
-            return err;
+            err = download(host, port, fileName, offset);
         } catch (Exception | Error e) {
             LOG.error(e.getMessage(), e);
             throw new TException("controller encounter error !!!");
+        } finally {
+            if(controller != null)
+                controller.close();
         }
+        return err;
     }
 
     /**
@@ -142,24 +153,30 @@ public class DownloadClient {
      */
     private int perform(TDFileService.Client client, String fileName, long start) throws Exception {
         long fetch = start; // startCon is offset that haven't been write
-        TFileInfo info = client.open(fileName, start);
+        int code = 0;
+        try {
+            TFileInfo info = client.open(fileName, start);
 
-        /* startCon writing */
-        writing(fileName, start, info);
+            /* startCon writing */
+            writing(fileName, start, info);
 
-        /* startCon receive file chunk from the server */
-        while (fetch < info.length) {
-            TFileChunk chunk = client.getChunk();
-            if(chunk != null) {
-                queue.put(chunk);
-                fetch += chunk.length;
+            /* startCon receive file chunk from the server */
+            while (fetch < info.length) {
+                TFileChunk chunk = client.getChunk();
+                if(chunk != null) {
+                    queue.put(chunk);
+                    fetch += chunk.length;
+                }
             }
+
+            /* check md5 */
+            code = checking(info, fileName);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+        } finally {
+            if(client != null)
+                client.close();
         }
-
-        /* check md5 */
-        int code = checking(info, fileName);
-
-        client.close();
 
         /* move the file from ing to ed if ok */
         if (error.getErrCode() == Err.OK)
@@ -185,15 +202,16 @@ public class DownloadClient {
      * startCon writing thread
      * @throws Exception
      */
-    private void writing(String fileName, long start, TFileInfo info) throws Exception {
+    private void writing(final String fileName, final long start, final TFileInfo info) throws Exception {
         writeThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 //record write offset for error code using
                 long write = start; // startCon is the offset which haven't been write, write = (startCon - 1) + 1, (startCon - 1) indicate the offset have been write
+                RandomAccessFile raf = null;
                 try {
                     boolean isTaken = false;
-                    RandomAccessFile raf = new RandomAccessFile(new File(ingPath + fileName),
+                    raf = new RandomAccessFile(new File(ingPath + fileName),
                             "rw");
                     raf.seek(start);
 
@@ -206,11 +224,18 @@ public class DownloadClient {
                         if(write == info.length)
                             isTaken = true;
                     }
-                    raf.close();
+
                 } catch (Throwable e) {
                     LOG.error(e.getMessage(), e);
                     error.setErrCode(Err.DOWNLOAD_FAIL);
                     error.setCommitOffset(write);//write - 1 is the offset which have been write , we record the first offset haven't been write
+                } finally {
+                    if(raf != null)
+                        try {
+                            raf.close();
+                        } catch (Exception | Error e) {
+                            LOG.error(e.getMessage(), e);
+                        }
                 }
             }
         });

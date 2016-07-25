@@ -18,7 +18,7 @@ public class DownloadServiceTest {
         String name = null;
         long offset = 0;
 
-        DownloadClient down = new DownloadClient();
+        DownloadClient down = new DownloadClient("127.0.0.1:2181");
         Err err = down.download(host, port, name, offset);
 
         /* error and retry  */

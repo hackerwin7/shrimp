@@ -22,7 +22,7 @@ public class Server2Test {
         mServer.start(9092);
 
         //register to controller, firstly startCon controller
-        ControllerClient controller = new ControllerClient();
+        ControllerClient controller = new ControllerClient("127.0.0.1:2181");
         controller.open();
         controller.register(Utils.ip() + ":" + 9092);
         controller.close();

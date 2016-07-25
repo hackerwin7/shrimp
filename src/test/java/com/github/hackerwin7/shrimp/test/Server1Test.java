@@ -26,7 +26,7 @@ public class Server1Test {
         mServer.start(9091);
 
         //register to controller, firstly startCon controller
-        ControllerClient controller = new ControllerClient();
+        ControllerClient controller = new ControllerClient("127.0.0.1:2181");
         controller.open();
         controller.register(Utils.ip() + ":" + 9091);
         controller.close();
@@ -41,7 +41,7 @@ public class Server1Test {
 
     private void start1() throws Exception {
         //register to controller, firstly startCon controller
-        ControllerClient controller = new ControllerClient();
+        ControllerClient controller = new ControllerClient("127.0.0.1:2181");
         controller.open();
         controller.register(Utils.ip() + ":" + 9091);
         controller.close();

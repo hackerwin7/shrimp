@@ -81,15 +81,16 @@ public class TUFileServiceHandler implements TUFileService.Iface {
      * @param info
      * @throws Exception
      */
-    private void writing(TFileInfo info) throws Exception {
+    private void writing(final TFileInfo info) throws Exception {
         wth = new Thread(new Runnable() {
             @Override
             public void run() {
                 long write = info.getStart();
                 String path = ingPath + info.getName();
                 File file = new File(path);
+                RandomAccessFile raf = null;
                 try {
-                    RandomAccessFile raf = new RandomAccessFile(file, "rw");
+                    raf = new RandomAccessFile(file, "rw");
                     raf.seek(info.getStart());
                     while (write < info.getLength()) {
                         TFileChunk chunk = queue.take();
@@ -97,11 +98,17 @@ public class TUFileServiceHandler implements TUFileService.Iface {
                         raf.write(bytes, 0, (int) chunk.getLength());
                         write += chunk.getLength();
                     }
-                    raf.close();
                 } catch (Exception | Error e) {
                     LOG.error(e.getMessage(), e);
                     error.setErrCode(Err.UPLOAD_FAIL);
                     error.setCommitOffset(write);//write is first offset that haven't been write
+                } finally {
+                    if(raf != null)
+                        try {
+                            raf.close();
+                        } catch (Exception | Error e) {
+                            LOG.error(e.getMessage(), e);
+                        }
                 }
             }
         });

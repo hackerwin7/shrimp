@@ -45,7 +45,7 @@ public class ControllerServer {
     public void start(int port) throws TException {
         this.port = port;
         handler = new TControllerServiceHandler();
-        TMultiplexedProcessor processor = new TMultiplexedProcessor();
+        final TMultiplexedProcessor processor = new TMultiplexedProcessor();
         processor.registerProcessor("Controller", new TControllerService.Processor<>(handler));
         Runnable simple = new Runnable() {
             @Override

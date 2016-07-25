@@ -44,22 +44,21 @@ public class ControllerClient {
     private TControllerService.Client client = null;
 
     /**
-     * load the zk string with the conf file, default is localhost
-     * @throws Exception
-     */
-    public ControllerClient() throws Exception {
-        //load the zk conn string
-        String zks = "127.0.0.1:2181";
-        init(zks);
-    }
-
-    /**
      * init zk
      * @param zks
      * @throws Exception
      */
     public ControllerClient(String zks) throws Exception {
         init(zks);
+    }
+
+    /**
+     * zk driver args
+     * @param zk
+     * @throws Exception
+     */
+    public ControllerClient(ZkClient zk) throws Exception {
+        init(zk);
     }
 
     /**
@@ -75,16 +74,36 @@ public class ControllerClient {
 
     /**
      * constructor with zk driver
+     * why too many connections , I know the reason : maybe the exception between the new and close had been thrown
      * @param zks
      * @throws Exception
      */
     private void init(String zks) throws Exception {
-        ZkClient zk = new ZkClient(zks);
+        ZkClient zk = null;
+        try {
+            zk = new ZkClient(zks);
+            conhp = zk.get(ZK_CONTROLLER_PATH);
+            String[] arr = StringUtils.split(conhp, ":");
+            host = arr[0];
+            port = Integer.parseInt(arr[1]);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+        } finally {
+            if(zk != null)
+                zk.close();
+        }
+    }
+
+    /**
+     * find the controller server host and ip
+     * @param zk
+     * @throws Exception
+     */
+    private void init(ZkClient zk) throws Exception {
         conhp = zk.get(ZK_CONTROLLER_PATH);
         String[] arr = StringUtils.split(conhp, ":");
         host = arr[0];
         port = Integer.parseInt(arr[1]);
-        zk.close();
     }
 
     /**

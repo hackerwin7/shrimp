@@ -69,7 +69,7 @@ public class DownloadClientServiceTest {
         int port = hp.get(host);
 
         //connect and download
-        DownloadClient client = new DownloadClient();
+        DownloadClient client = new DownloadClient("127.0.0.1:2181");
         client.setIngPath("src/main/");
         Err error = client.download(host, port, name, 3);
         if(error.getErrCode() != Err.OK)

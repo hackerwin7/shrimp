@@ -13,7 +13,7 @@ import com.github.hackerwin7.shrimp.thrift.client.DownloadClient;
  */
 public class Client3Test {
     public static void main(String[] args) throws Exception {
-        DownloadClient download = new DownloadClient();
+        DownloadClient download = new DownloadClient("127.0.0.1:2181");
         download.setIngPath("src/data/server3/ing/");
         download.setEdPath("src/data/server3/ed/");
         Err err = download.download("shrimp.iml", 0);

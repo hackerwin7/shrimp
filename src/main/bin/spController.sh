@@ -43,7 +43,7 @@ function start() {
         echo "found controller.pid , please stop it first." 2>&2
         exit 1
     fi
-    if [ -e conf ] ; then
+    if [ -e $conf ] ; then
         for i in ${base}/lib/*;
         do CLASSPATH=${i}:"$CLASSPATH";
         done

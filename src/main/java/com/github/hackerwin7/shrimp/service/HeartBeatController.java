@@ -1,5 +1,6 @@
 package com.github.hackerwin7.shrimp.service;
 
+import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
@@ -41,10 +42,11 @@ public class HeartBeatController {
     private String host = null;
     private int port = 9091;
     private String zks = null;
+    private ZkClient zk = null;
 
     /**
      * constructor
-     * @param zk conn string, use to find the target host and target port
+     * @param zks conn string, use to find the target host and target port
      * @param host, local server's host
      * @param port, local server's port
      */
@@ -55,13 +57,25 @@ public class HeartBeatController {
     }
 
     /**
+     * reload zk driver constructor
+     * @param zk
+     * @param host
+     * @param port
+     */
+    public HeartBeatController(ZkClient zk, String host, int port) {
+        this.host = host;
+        this.port = port;
+        this.zk = zk;
+    }
+
+    /**
      * startCon the controller to be running
      */
     public void start() {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                //running and interval 50s + 20s random
+                //running and interval 10s + 20s random
                 while (running.get()) {
                     try {
                         proc();
@@ -78,7 +92,34 @@ public class HeartBeatController {
     }
 
     /**
-     * main process
+     * indicate the count for the heartbeat send
+     * @param count
+     * @param sec
+     */
+    public void start(final int count, final int sec) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int times = count;
+                //running and interval 50s + 20s random
+                while (times > 0) {
+                    try {
+                        proc(sec);
+                        //sleeping
+                        Thread.sleep(SLEEP_INTERVAL);
+                        times --;
+                    } catch (Exception | Error e) {
+                        LOG.error("heart beat running error : " + e.getMessage(), e);
+                    }
+                }
+
+            }
+        });
+        thread.start();
+    }
+
+    /**
+     * start process
      * 1.scan the relative path to get the file pool info
      * 2.sleep the random seconds (avoid hot spot)
      * 3.startCon the controller client and send the file pool info to controller server
@@ -87,6 +128,17 @@ public class HeartBeatController {
     private void proc() throws Exception {
         TFilePool pool = scan();
         randSleep();
+        send(pool);
+    }
+
+    /**
+     * indicate the seconds to sleep
+     * @param sec
+     * @throws Exception
+     */
+    private void proc(int sec) throws Exception {
+        TFilePool pool = scan();
+        Thread.sleep(sec * 1000);
         send(pool);
     }
 
@@ -142,10 +194,21 @@ public class HeartBeatController {
      * @throws Exception
      */
     private void send(TFilePool pool) throws Exception {
-        ControllerClient controller = new ControllerClient(zks);
-        controller.open();
-        controller.sendPool(pool);
-        controller.close();
+        ControllerClient controller = null;
+        try {
+            if(zk == null) {
+                controller = new ControllerClient(zks);
+            } else {
+                controller = new ControllerClient(zk);
+            }
+            controller.open();
+            controller.sendPool(pool);
+        } catch (Exception | Error e) {
+            LOG.error(e.getMessage(), e);
+        } finally {
+            if(controller != null)
+                controller.close();
+        }
     }
 
     /* getter and setter */
