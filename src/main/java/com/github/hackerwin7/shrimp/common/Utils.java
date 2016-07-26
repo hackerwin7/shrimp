@@ -16,6 +16,10 @@ import java.net.InetAddress;
  */
 public class Utils {
 
+    public static final String LOG4J_PROPERTY = "log4j.properties";
+    public static final String LOG4J_SHELL = "config.log4j";
+
+
     /**
      * get md5 hex string
      * @param path

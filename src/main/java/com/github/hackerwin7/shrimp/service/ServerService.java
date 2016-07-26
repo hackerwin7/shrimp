@@ -79,6 +79,7 @@ public class ServerService {
      * @throws Exception
      */
     private void run() throws Exception {
+        LOG.info("starting server......");
         MultipleProcServer server = new MultipleProcServer();
         server.setIngPath(ingPath);
         server.setEdPath(edPath);

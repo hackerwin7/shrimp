@@ -105,8 +105,7 @@ public class HeartBeatController {
                 while (times > 0) {
                     try {
                         proc(sec);
-                        //sleeping
-                        Thread.sleep(SLEEP_INTERVAL);
+                        //no sleeping
                         times --;
                     } catch (Exception | Error e) {
                         LOG.error("heart beat running error : " + e.getMessage(), e);
@@ -138,7 +137,8 @@ public class HeartBeatController {
      */
     private void proc(int sec) throws Exception {
         TFilePool pool = scan();
-        Thread.sleep(sec * 1000);
+        if(sec > 0)
+            Thread.sleep(sec * 1000);
         send(pool);
     }
 
@@ -194,6 +194,7 @@ public class HeartBeatController {
      * @throws Exception
      */
     private void send(TFilePool pool) throws Exception {
+        LOG.info("sending local server pool to controller that is " + pool);
         ControllerClient controller = null;
         try {
             if(zk == null) {

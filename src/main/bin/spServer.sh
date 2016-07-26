@@ -53,7 +53,7 @@ function start() {
 
         cd ${base}
 
-        $JAVA $JAVA_OPTS $TRACKER_OPTS -classpath .:$CLASSPATH com.github.hackerwin7.shrimp.executors.ServerExecutor 1>>$base/logs/server.log 2>&1 &
+        $JAVA $JAVA_OPTS $TRACKER_OPTS -classpath .:$CLASSPATH com.github.hackerwin7.shrimp.executors.ServerExecutor >>/dev/null 2>&1 &
         echo $! > $base/bin/server.pid
 
         echo "server started."

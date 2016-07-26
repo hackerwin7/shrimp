@@ -97,6 +97,6 @@ public class UploadService {
     private void inform() throws Exception {
         HeartBeatController hb = new HeartBeatController(zks, ip, port);
         hb.setPath(edPath);
-        hb.start(1, 1); // inform once
+        hb.start(1, 0); // inform once
     }
 }

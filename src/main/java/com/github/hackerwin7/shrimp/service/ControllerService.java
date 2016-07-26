@@ -2,7 +2,6 @@ package com.github.hackerwin7.shrimp.service;
 
 import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
 import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
-import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
@@ -67,9 +66,11 @@ public class ControllerService {
     private Timer timer = null;
     private Thread signal = null;
     private Thread trans = null;
+    private Thread sth = null;
 
     /* signal */
     private AtomicBoolean transRunning = new AtomicBoolean(true);
+    private AtomicBoolean statusRunning = new AtomicBoolean(true);
 
     /**
      * default reload constructor
@@ -106,21 +107,15 @@ public class ControllerService {
     private void load() throws Exception {
         if(StringUtils.isBlank(zkstr) || StringUtils.isBlank(ip)) {
             InputStream is = null;
-            try {
-                is = CommonUtils.file2in(CONF_CONTROLLER, CONF_SHELL);
-                Properties prop = new Properties();
-                prop.load(is);
-                ip = prop.getProperty("host");
-                if (StringUtils.isBlank(ip))
-                    ip = Utils.ip();
-                port = Integer.parseInt(prop.getProperty("port"));
-                zkstr = prop.getProperty("zookeeper.connect");
-            } catch (Exception | Error e) {
-                LOG.error(e.getMessage(), e);
-            } finally {
-                if(is != null)
-                    is.close();
-            }
+            is = CommonUtils.file2in(CONF_CONTROLLER, CONF_SHELL);
+            Properties prop = new Properties();
+            prop.load(is);
+            ip = prop.getProperty("host");
+            if (StringUtils.isBlank(ip))
+                ip = Utils.ip();
+            port = Integer.parseInt(prop.getProperty("port"));
+            zkstr = prop.getProperty("zookeeper.connect");
+            is.close();
         }
     }
 
@@ -165,6 +160,7 @@ public class ControllerService {
         thrift();
         heartbeat();
         signal();
+        LOG.info("starting as a controller......");
     }
 
     /**
@@ -176,6 +172,8 @@ public class ControllerService {
         thrift();
         signal();
         transfer();
+        status();
+        LOG.info("starting as a secondary controller......");
     }
 
     /**
@@ -184,6 +182,7 @@ public class ControllerService {
      * @throws Exception
      */
     public void trans2Sec() throws Exception {
+        LOG.info("changing from controller into secondary controller......");
         close();
         startSec();
     }
@@ -196,6 +195,7 @@ public class ControllerService {
      * @throws Exception
      */
     public void trans2Cont() throws Exception {
+        LOG.info("changing from secondary controller into controller......");
         /* waiting and change zk */
         while (zk.exists(ZK_ROOT + ZK_CONTROLLER)) {
             Thread.sleep(3000);
@@ -282,6 +282,7 @@ public class ControllerService {
 
             try {
                 if(!zk.exists(ZK_ROOT + ZK_SEC_CONTROLLER)) {
+                    LOG.info("not found zk secondary controller info......");
                     cnt++;
                     if(cnt >= RETRY_COUNT) {
                         int signal = reloadSecController();
@@ -300,6 +301,7 @@ public class ControllerService {
                     /* startCon the client to send the info to the secondary controller */
                     ControllerClient client = null;
                     try {
+                        LOG.info("sending pool to secondary controller that is " + pools);
                         client = new ControllerClient(secIp, secPort);
                         client.open();
                         client.sendPools(pools);
@@ -396,6 +398,31 @@ public class ControllerService {
     }
 
     /**
+     * status the log every minute
+     * @throws Exception
+     */
+    private void status() throws Exception {
+        if(sth == null || !sth.isAlive()) {
+            sth = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        statusRunning.set(true);
+                        while (statusRunning.get()) {
+                            Map<String, TFilePool> pools = tController.getPools();
+                            LOG.info("backup pool info: " + pools);
+                            Thread.sleep(30 * 1000);
+                        }
+                    } catch (Exception | Error e) {
+                        LOG.error(e.getMessage(), e);
+                    }
+                }
+            });
+            sth.start();
+        }
+    }
+
+    /**
      * close the zk conn
      * @throws Exception
      */
@@ -414,6 +441,11 @@ public class ControllerService {
         }
         if(trans != null) {
             transRunning.set(false);
+            trans = null;
+        }
+        if(sth != null) {
+            statusRunning.set(false);
+            sth = null;
         }
         //could not close the signal, it can not kill itself (signal can not close signal)
     }

@@ -53,7 +53,7 @@ function start() {
 
         cd ${base}
 
-        $JAVA $JAVA_OPTS $TRACKER_OPTS -classpath .:$CLASSPATH com.github.hackerwin7.shrimp.executors.ControllerExecutor 1>>$base/logs/controller.log 2>&1 &
+        $JAVA $JAVA_OPTS $TRACKER_OPTS -classpath .:$CLASSPATH com.github.hackerwin7.shrimp.executors.ControllerExecutor >>/dev/null 2>&1 &
         echo $! > $base/bin/controller.pid
 
         echo "controller started."
