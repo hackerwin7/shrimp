@@ -9,8 +9,8 @@
 /* package */
 namespace java com.github.hackerwin7.shrimp.thrift.gen
 
-/* constatns */
-const i32 CHUNK_UNIT = 1024
+/* constatns for download and upload transfer unit KB */
+const i32 CHUNK_UNIT = 10240
 
 /* data */
 

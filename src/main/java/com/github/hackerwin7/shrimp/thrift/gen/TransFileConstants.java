@@ -36,6 +36,6 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
 public class TransFileConstants {
 
-  public static final int CHUNK_UNIT = 1024;
+  public static final int CHUNK_UNIT = 10240;
 
 }

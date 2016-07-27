@@ -104,7 +104,10 @@ public class HeartBeatController {
                 //running and interval 50s + 20s random
                 while (times > 0) {
                     try {
+                        long procs = System.currentTimeMillis();
                         proc(sec);
+                        long procd = System.currentTimeMillis();
+                        LOG.debug("proc: " + (procd - procs));
                         //no sleeping
                         times --;
                     } catch (Exception | Error e) {
@@ -136,10 +139,16 @@ public class HeartBeatController {
      * @throws Exception
      */
     private void proc(int sec) throws Exception {
+        long scans = System.currentTimeMillis();
         TFilePool pool = scan();
+        long scand = System.currentTimeMillis();
+        LOG.debug("scan: " + (scand - scans));
         if(sec > 0)
             Thread.sleep(sec * 1000);
+        long sends = System.currentTimeMillis();
         send(pool);
+        long sendd = System.currentTimeMillis();
+        LOG.debug("send: " + (sendd - sends));
     }
 
     /**
@@ -157,7 +166,7 @@ public class HeartBeatController {
             TFileInfo info = new TFileInfo();
             info.setName(file.getName());
             info.setLength(file.length());
-            info.setMd5(Utils.md5Hex(rpath + info.getName()));
+            info.setMd5(Utils.md5Hex(rpath + info.getName())); // it's very slowly to get md5 when your files account is huge
             // put
             infos.put(info.getName(), info);
         }

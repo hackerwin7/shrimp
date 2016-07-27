@@ -54,9 +54,11 @@ if [ -e $conf ] ; then
 
     cd ${base}
 
+    echo "$(date +"%Y-%m-%d %T") starting upload $filepath ..."
+
     $JAVA $JAVA_OPTS $TRACKER_OPTS -classpath .:$CLASSPATH com.github.hackerwin7.shrimp.executors.UploadExecutor $filepath 2>&1
 
-    echo "starting upload..."
+    echo "$(date +"%Y-%m-%d %T") uploaded $filepath"
 else
     echo "conf $conf is not exists!"
 fi

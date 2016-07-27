@@ -3,6 +3,7 @@ package com.github.hackerwin7.shrimp.service;
 import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
 import com.github.hackerwin7.shrimp.common.Utils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 
 import java.io.InputStream;
 import java.nio.file.*;
@@ -17,6 +18,9 @@ import java.util.Properties;
  * Tips:
  */
 public class UploadService {
+
+    /* logger */
+    private static final Logger LOG = Logger.getLogger(UploadService.class);
 
     /* constants */
     public static final String CONF_SERVER = "server.properties";
@@ -37,12 +41,21 @@ public class UploadService {
         /* args input */
         String fileName = getName(src);
         /* load config to get path */
+        long loads = System.currentTimeMillis();
         load();
+        long loadd = System.currentTimeMillis();
+        LOG.debug("load : " + (loadd - loads));
         /* copy file to the path */
         String des = edPath + fileName;
+        long copys = System.currentTimeMillis();
         fileCopy(src, des);
+        long copyd = System.currentTimeMillis();
+        LOG.debug("copy : " + (copyd - copys));
         /* scan the file info and inform the controller */
+        long informs = System.currentTimeMillis();
         inform();
+        long informd = System.currentTimeMillis();
+        LOG.debug("inform : " + (informd - informs));
     }
 
     /**

@@ -212,6 +212,16 @@ public class ControllerService {
 
         /* heartbeat */
         heartbeat();
+
+        /* close some secondary thread */
+        if(trans != null) {
+            transRunning.set(false);
+            trans = null;
+        }
+        if(sth != null) {
+            statusRunning.set(false);
+            sth = null;
+        }
     }
 
     /**

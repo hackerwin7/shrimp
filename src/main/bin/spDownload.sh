@@ -54,9 +54,11 @@ if [ -e $conf ] ; then
 
     cd ${base}
 
+    echo "$(date +"%Y-%m-%d %T") starting download $filename ..."
+
     $JAVA $JAVA_OPTS $TRACKER_OPTS -classpath .:$CLASSPATH com.github.hackerwin7.shrimp.executors.DownloadExecutor $filename 2>&1
 
-    echo "starting download..."
+    echo "$(date +"%Y-%m-%d %T") downloaded $filename"
 else
     echo "conf $conf is not exists!"
 fi
