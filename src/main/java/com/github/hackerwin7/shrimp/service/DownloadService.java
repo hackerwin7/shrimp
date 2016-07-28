@@ -1,6 +1,6 @@
 package com.github.hackerwin7.shrimp.service;
 
-import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
+import com.github.hackerwin7.jlib.utils.commons.CommonUtils;
 import com.github.hackerwin7.shrimp.common.Err;
 import com.github.hackerwin7.shrimp.thrift.client.DownloadClient;
 import org.apache.commons.lang3.StringUtils;

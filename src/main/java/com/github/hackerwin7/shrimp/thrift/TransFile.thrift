@@ -174,7 +174,7 @@ struct TMessage {
 }
 
 /**
-* message transfer
+* message transfer, data transfer, such as file pool info
 **/
 service TTransService {
 
@@ -182,6 +182,16 @@ service TTransService {
     * send message to the others
     **/
     oneway void sendMsg(1:TMessage msg),
+
+    /**
+    * send file pool to the server, generally loca client process send to local server process
+    **/
+    oneway void sendPool(1:TFilePool pool),
+
+    /**
+    * add file info into the server's pool
+    **/
+    oneway void addFile(1:TFileInfo info),
 
     /**
     * whether exists the specific file, how to know the file is complete or not ?

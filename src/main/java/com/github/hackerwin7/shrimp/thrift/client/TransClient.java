@@ -1,6 +1,7 @@
 package com.github.hackerwin7.shrimp.thrift.client;
 
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
+import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
 import com.github.hackerwin7.shrimp.thrift.gen.TTransService;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
@@ -78,6 +79,24 @@ public class TransClient {
         protocol = new TBinaryProtocol(transport);
         mp = new TMultiplexedProtocol(protocol, "Trans");
         client = new TTransService.Client(mp);
+    }
+
+    /**
+     * add a file info to the server's pool
+     * @param info
+     * @throws TException
+     */
+    public void send(TFileInfo info) throws TException {
+        client.addFile(info);
+    }
+
+    /**
+     * send a pool to server
+     * @param pool
+     * @throws TException
+     */
+    public void send(TFilePool pool) throws TException {
+        client.sendPool(pool);
     }
 
     /**

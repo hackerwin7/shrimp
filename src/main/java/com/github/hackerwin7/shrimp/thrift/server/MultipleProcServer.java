@@ -1,6 +1,7 @@
 package com.github.hackerwin7.shrimp.thrift.server;
 
 import com.github.hackerwin7.shrimp.thrift.gen.TDFileService;
+import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
 import com.github.hackerwin7.shrimp.thrift.gen.TTransService;
 import com.github.hackerwin7.shrimp.thrift.gen.TUFileService;
 import com.github.hackerwin7.shrimp.thrift.impl.TDFileServiceHandler;
@@ -29,6 +30,7 @@ public class MultipleProcServer {
     /* driver */
     private TMultiplexedProcessor processor = new TMultiplexedProcessor();
     private TServer server = null;
+    private TTransServiceHandler trans = null;
 
     /* data */
     private int port = 9090;
@@ -50,7 +52,7 @@ public class MultipleProcServer {
         TUFileServiceHandler up = new TUFileServiceHandler();
         up.setIngPath(ingPath);
         up.setEdPath(edPath);
-        TTransServiceHandler trans = new TTransServiceHandler();
+        trans = new TTransServiceHandler();
         trans.setRelPath(transPath);
         processor.registerProcessor("Download", new TDFileService.Processor(down));
         processor.registerProcessor("Upload", new TUFileService.Processor(up));
@@ -99,5 +101,9 @@ public class MultipleProcServer {
 
     public void setTransPath(String transPath) {
         this.transPath = transPath;
+    }
+
+    public TFilePool getLocalPool() {
+        return trans.getLocalPool();
     }
 }

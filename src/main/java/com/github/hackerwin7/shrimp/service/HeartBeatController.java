@@ -1,17 +1,17 @@
 package com.github.hackerwin7.shrimp.service;
 
-import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
+import com.github.hackerwin7.jlib.utils.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
+import com.github.hackerwin7.shrimp.thrift.server.MultipleProcServer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -34,6 +34,8 @@ public class HeartBeatController {
     /* constants */
     public static final long SLEEP_INTERVAL = 10000;
     public static final int RAND_SLEEP_SEC = 20;
+    public static final int QLEN = 4096;
+    public static final int PARALLEL_DEGREE = 50;
 
     /* relative path */
     private String path = "";
@@ -43,6 +45,9 @@ public class HeartBeatController {
     private int port = 9091;
     private String zks = null;
     private ZkClient zk = null;
+
+    /* local server handler */
+    private MultipleProcServer server = null;
 
     /**
      * constructor
@@ -71,24 +76,33 @@ public class HeartBeatController {
     /**
      * startCon the controller to be running
      */
-    public void start() {
-        Thread thread = new Thread(new Runnable() {
+    public void start() throws Exception {
+
+        /* init , scan firstly */
+        Thread initThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                //running and interval 10s + 20s random
-                while (running.get()) {
-                    try {
-                        proc();
-                        //sleeping
-                        Thread.sleep(SLEEP_INTERVAL);
-                    } catch (Exception | Error e) {
-                        LOG.error("heart beat running error : " + e.getMessage(), e);
-                    }
+                try {
+                    mProc();
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
                 }
-
             }
         });
-        thread.start();
+        initThread.start();
+
+        /* during running, no scan */
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    mProcDuring();
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            }
+        }, 10000, SLEEP_INTERVAL);
     }
 
     /**
@@ -134,6 +148,25 @@ public class HeartBeatController {
     }
 
     /**
+     * multiple process
+     * @throws Exception
+     */
+    private void mProc() throws Exception {
+        TFilePool pool = multiScan(PARALLEL_DEGREE);
+        send(pool);
+    }
+
+    /**
+     * not init, during running, hearteat send
+     * @throws Exception
+     */
+    private void mProcDuring() throws Exception {
+        TFilePool pool = server.getLocalPool();
+        randSleep();
+        send(pool);
+    }
+
+    /**
      * indicate the seconds to sleep
      * @param sec
      * @throws Exception
@@ -163,10 +196,7 @@ public class HeartBeatController {
         File[] files = dir.listFiles();
         for(File file : files) {
             // info
-            TFileInfo info = new TFileInfo();
-            info.setName(file.getName());
-            info.setLength(file.length());
-            info.setMd5(Utils.md5Hex(rpath + info.getName())); // it's very slowly to get md5 when your files account is huge
+            TFileInfo info = getInfo(file, rpath); // it's very slowly to get md5 when your files account is huge in the single thread
             // put
             infos.put(info.getName(), info);
         }
@@ -175,6 +205,73 @@ public class HeartBeatController {
         pool.setPort(port);
         pool.setPool(infos);
         return pool;
+    }
+
+    /**
+     * multiple thread scan
+     * @param cnt parallel count
+     * @return file info pool
+     * @throws Exception
+     */
+    private TFilePool multiScan(int cnt) throws Exception {
+
+        /* running time */
+        long start = System.currentTimeMillis();
+
+        /* get file list */
+        File dir = new File(path);
+        final String relPath = getPath(path);
+        File[] files = dir.listFiles();
+        final BlockingQueue<File> inq = new LinkedBlockingQueue<>(QLEN);
+        final BlockingQueue<TFileInfo> outq = new LinkedBlockingQueue<>(QLEN);
+        for(File file : files) {
+            inq.put(file);
+        }
+        int len = files.length;
+
+        /* parallel process */
+        final ConcurrentMap<String, TFileInfo> infos = new ConcurrentHashMap<>();
+        ExecutorService executor = Executors.newFixedThreadPool(cnt);
+        for(final File file : files) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    TFileInfo info = getInfo(file, relPath);
+                    infos.put(info.getName(), info);
+                }
+            });
+        }
+        executor.shutdown();
+        while (!executor.isTerminated()) {
+            LOG.info("processing " + infos.size() + " files ......");
+        }
+        TFilePool pool = new TFilePool();
+        pool.setHost(host);
+        pool.setPort(port);
+        pool.setPool(infos);
+
+        /* running time */
+        long end = System.currentTimeMillis();
+        LOG.info("multiple scan running " + (end - start) + " ms ...");
+        return pool;
+    }
+
+    /**
+     * File -> thrift file info
+     * @param file
+     * @param relPath
+     * @return file info
+     */
+    private TFileInfo getInfo(File file, String relPath) {
+        TFileInfo info = new TFileInfo();
+        info.setName(file.getName());
+        info.setLength(file.length());
+        try {
+            info.setMd5(Utils.md5Hex(relPath + info.getName()));
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+        }
+        return info;
     }
 
     /**
@@ -225,5 +322,9 @@ public class HeartBeatController {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public void setServer(MultipleProcServer server) {
+        this.server = server;
     }
 }

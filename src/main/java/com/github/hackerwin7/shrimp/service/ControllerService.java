@@ -1,7 +1,7 @@
 package com.github.hackerwin7.shrimp.service;
 
-import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
-import com.github.hackerwin7.jlib.utils.test.drivers.zk.ZkClient;
+import com.github.hackerwin7.jlib.utils.commons.CommonUtils;
+import com.github.hackerwin7.jlib.utils.drivers.zk.ZkClient;
 import com.github.hackerwin7.shrimp.common.Utils;
 import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;

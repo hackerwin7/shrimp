@@ -1,6 +1,6 @@
 package com.github.hackerwin7.shrimp.service;
 
-import com.github.hackerwin7.jlib.utils.test.commons.CommonUtils;
+import com.github.hackerwin7.jlib.utils.commons.CommonUtils;
 import com.github.hackerwin7.shrimp.common.Utils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
