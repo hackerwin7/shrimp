@@ -182,7 +182,7 @@ public class ControllerService {
      * @throws Exception
      */
     public void trans2Sec() throws Exception {
-        LOG.info("changing from controller into secondary controller......");
+        LOG.info("################################################# changing from controller into secondary controller......");
         close();
         startSec();
     }
@@ -195,7 +195,7 @@ public class ControllerService {
      * @throws Exception
      */
     public void trans2Cont() throws Exception {
-        LOG.info("changing from secondary controller into controller......");
+        LOG.info("################################################# changing from secondary controller into controller......");
         /* waiting and change zk */
         while (zk.exists(ZK_ROOT + ZK_CONTROLLER)) {
             Thread.sleep(3000);
@@ -291,6 +291,12 @@ public class ControllerService {
         public void run() {
 
             try {
+
+                /* show the pools info */
+                Map<String, TFilePool> pools = tController.getPools();
+                LOG.info("===========================================================> own the pools info : ");
+                LOG.info("-----------------------> " + pools);
+
                 if(!zk.exists(ZK_ROOT + ZK_SEC_CONTROLLER)) {
                     LOG.info("not found zk secondary controller info......");
                     cnt++;
@@ -306,12 +312,10 @@ public class ControllerService {
                     String[] arr = StringUtils.split(data, ":");
                     secIp = arr[0];
                     secPort = Integer.parseInt(arr[1]);
-                    /* get the pool info from the controller handler */
-                    Map<String, TFilePool> pools = tController.getPools();
                     /* startCon the client to send the info to the secondary controller */
                     ControllerClient client = null;
                     try {
-                        LOG.info("sending pool to secondary controller that is " + pools);
+                        LOG.info("sending pools info to secondary controller");
                         client = new ControllerClient(secIp, secPort);
                         client.open();
                         client.sendPools(pools);
@@ -420,7 +424,8 @@ public class ControllerService {
                         statusRunning.set(true);
                         while (statusRunning.get()) {
                             Map<String, TFilePool> pools = tController.getPools();
-                            LOG.info("backup pool info: " + pools);
+                            LOG.info("===========================================================> backup pool info: ");
+                            LOG.info("-----------------------> " + pools);
                             Thread.sleep(30 * 1000);
                         }
                     } catch (Exception | Error e) {

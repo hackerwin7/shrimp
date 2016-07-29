@@ -36,6 +36,7 @@ public class HeartBeatController {
     public static final int RAND_SLEEP_SEC = 20;
     public static final int QLEN = 4096;
     public static final int PARALLEL_DEGREE = 50;
+    public static final int LONG_TIMER_SCAN = 5 * 60; //5 mins
 
     /* relative path */
     private String path = "";
@@ -83,7 +84,7 @@ public class HeartBeatController {
             @Override
             public void run() {
                 try {
-                    mProc();
+                    mProcSimple();
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
                 }
@@ -92,8 +93,8 @@ public class HeartBeatController {
         initThread.start();
 
         /* during running, no scan */
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
+        Timer shortTimer = new Timer();
+        shortTimer.schedule(new TimerTask() {
             @Override
             public void run() {
                 try {
@@ -103,56 +104,37 @@ public class HeartBeatController {
                 }
             }
         }, 10000, SLEEP_INTERVAL);
-    }
 
-    /**
-     * indicate the count for the heartbeat send
-     * @param count
-     * @param sec
-     */
-    public void start(final int count, final int sec) {
-        Thread thread = new Thread(new Runnable() {
+        /* long running , scan and send */
+        Timer longTimer = new Timer();
+        longTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                int times = count;
-                //running and interval 50s + 20s random
-                while (times > 0) {
-                    try {
-                        long procs = System.currentTimeMillis();
-                        proc(sec);
-                        long procd = System.currentTimeMillis();
-                        LOG.debug("proc: " + (procd - procs));
-                        //no sleeping
-                        times --;
-                    } catch (Exception | Error e) {
-                        LOG.error("heart beat running error : " + e.getMessage(), e);
-                    }
+                try {
+                    mProc();
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
                 }
-
             }
-        });
-        thread.start();
-    }
-
-    /**
-     * start process
-     * 1.scan the relative path to get the file pool info
-     * 2.sleep the random seconds (avoid hot spot)
-     * 3.startCon the controller client and send the file pool info to controller server
-     * @throws Exception
-     */
-    private void proc() throws Exception {
-        TFilePool pool = scan();
-        randSleep();
-        send(pool);
+        }, LONG_TIMER_SCAN * 1000, LONG_TIMER_SCAN * 1000);
     }
 
     /**
      * multiple process
      * @throws Exception
      */
+    private void mProcSimple() throws Exception {
+        TFilePool pool = multiScan(PARALLEL_DEGREE);
+        send(pool);
+    }
+
+    /**
+     * multiple process and sleep random seconds
+     * @throws Exception
+     */
     private void mProc() throws Exception {
         TFilePool pool = multiScan(PARALLEL_DEGREE);
+        randSleep();
         send(pool);
     }
 
@@ -164,47 +146,6 @@ public class HeartBeatController {
         TFilePool pool = server.getLocalPool();
         randSleep();
         send(pool);
-    }
-
-    /**
-     * indicate the seconds to sleep
-     * @param sec
-     * @throws Exception
-     */
-    private void proc(int sec) throws Exception {
-        long scans = System.currentTimeMillis();
-        TFilePool pool = scan();
-        long scand = System.currentTimeMillis();
-        LOG.debug("scan: " + (scand - scans));
-        if(sec > 0)
-            Thread.sleep(sec * 1000);
-        long sends = System.currentTimeMillis();
-        send(pool);
-        long sendd = System.currentTimeMillis();
-        LOG.debug("send: " + (sendd - sends));
-    }
-
-    /**
-     * scan the file pool info according to the path
-     * @return file pool
-     * @throws Exception
-     */
-    private TFilePool scan() throws Exception {
-        Map<String, TFileInfo> infos = new HashMap<>();
-        File dir = new File(path);
-        String rpath = getPath(path);
-        File[] files = dir.listFiles();
-        for(File file : files) {
-            // info
-            TFileInfo info = getInfo(file, rpath); // it's very slowly to get md5 when your files account is huge in the single thread
-            // put
-            infos.put(info.getName(), info);
-        }
-        TFilePool pool = new TFilePool();
-        pool.setHost(host);
-        pool.setPort(port);
-        pool.setPool(infos);
-        return pool;
     }
 
     /**
@@ -252,7 +193,7 @@ public class HeartBeatController {
 
         /* running time */
         long end = System.currentTimeMillis();
-        LOG.info("multiple scan running " + (end - start) + " ms ...");
+        LOG.info("~~~~~~~~~~~~~~~~~~ multiple scan running " + (end - start) + " ms ...");
         return pool;
     }
 
@@ -300,7 +241,8 @@ public class HeartBeatController {
      * @throws Exception
      */
     private void send(TFilePool pool) throws Exception {
-        LOG.info("sending local server pool to controller that is " + pool);
+        LOG.info("=====================================================> sending local server pool to controller : ");
+        LOG.info("---------------------> " + pool);
         ControllerClient controller = null;
         try {
             if(zk == null) {

@@ -31,9 +31,9 @@ public class TControllerServiceHandler implements TControllerService.Iface {
 
     /* data */
     private Map<String, TFileInfo> filePool = new HashMap<>();
-    private List<String> servers = new LinkedList<>();//127.0.0.1:9098
+    private List<String> servers = new LinkedList<>();// 127.0.0.1:9098
     private Map<String, TransClient> clients = new HashMap<>();
-    private Map<String, TFilePool> pools = new HashMap<>();
+    private Map<String, TFilePool> pools = new HashMap<>();// key = host:port
 
     /* signal */
     private int findAccount = 3;
@@ -55,6 +55,23 @@ public class TControllerServiceHandler implements TControllerService.Iface {
             LOG.error(e.getMessage(), e);
             throw new TException("signal queue put error");
         }
+    }
+
+    /**
+     * add file to the controller's pool
+     * @param host
+     * @param port
+     * @param info
+     * @throws TException
+     */
+    @Override
+    public void addFile(String host, int port, TFileInfo info) throws TException {
+        String key = host + ":" + port;
+        if(!pools.containsKey(key) || pools.get(key) == null)
+            pools.put(key, new TFilePool());
+        if(pools.get(key).getPool() == null)
+            pools.get(key).setPool(new HashMap<String, TFileInfo>());
+        pools.get(key).getPool().put(info.getName(), info); // add the file info to the specific host , specific ip, specific file name
     }
 
     /**
@@ -104,13 +121,6 @@ public class TControllerServiceHandler implements TControllerService.Iface {
         servers.add(hostport);
         // when registering the server, we open the client conn
         clients.put(hostport, generateClient(hostport));
-
-        // DEBUG
-        System.out.println("calling register ...");
-
-        LOG.debug("register call ...");
-        LOG.debug("servers : " + servers);
-        LOG.debug("clients : " + clients);
     }
 
     /**

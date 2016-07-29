@@ -2,9 +2,13 @@ package com.github.hackerwin7.shrimp.service;
 
 import com.github.hackerwin7.jlib.utils.commons.CommonUtils;
 import com.github.hackerwin7.shrimp.common.Utils;
+import com.github.hackerwin7.shrimp.thrift.client.ControllerClient;
+import com.github.hackerwin7.shrimp.thrift.client.TransClient;
+import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.*;
 import java.util.Properties;
@@ -31,6 +35,7 @@ public class UploadService {
     private int port = 0;
     private String zks = null;
     private String edPath = null;
+    private String fileName = null;
 
     /**
      * start the service to upload
@@ -39,7 +44,7 @@ public class UploadService {
      */
     public void start(String src) throws Exception {
         /* args input */
-        String fileName = getName(src);
+        fileName = getName(src);
         /* load config to get path */
         long loads = System.currentTimeMillis();
         load();
@@ -103,13 +108,65 @@ public class UploadService {
     }
 
     /**
-     * inform a pool info to controller
-     * start a heartbeat once
+     * inform a new uploaded file to controller and server, parallel
      * @throws Exception
      */
     private void inform() throws Exception {
-        HeartBeatController hb = new HeartBeatController(zks, ip, port);
-        hb.setPath(edPath);
-        hb.start(1, 0); // inform once
+        TFileInfo info = getInfo(edPath + fileName);
+        informController(info);
+        informServer(info);
+    }
+
+    /**
+     * get info from the path
+     * @param path
+     * @return file thrift info
+     * @throws Exception
+     */
+    private TFileInfo getInfo(String path) throws Exception {
+        File file = new File(path);
+        TFileInfo info = new TFileInfo();
+        info.setName(file.getName());
+        info.setLength(file.length());
+        info.setMd5(Utils.md5Hex(path));
+        return info;
+    }
+
+    /**
+     * send a file info to the controller
+     * @throws Exception
+     */
+    private void informController(final TFileInfo info) throws Exception {
+        Thread conth = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    ControllerClient client = new ControllerClient(zks);
+                    client.open();
+                    client.sendFile(ip, port, info);
+                    client.close();
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            }
+        });
+        conth.start();
+    }
+
+    private void informServer(final TFileInfo info) throws Exception {
+        Thread serth = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    TransClient client = new TransClient(ip, port);
+                    client.open();
+                    client.send(info);
+                    client.close();
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            }
+        });
+        serth.start();
     }
 }

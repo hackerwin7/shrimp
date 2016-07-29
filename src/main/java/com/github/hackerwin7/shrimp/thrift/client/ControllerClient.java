@@ -128,6 +128,17 @@ public class ControllerClient {
     }
 
     /**
+     * send file info to the controller
+     * @param ip
+     * @param port
+     * @param info
+     * @throws TException
+     */
+    public void sendFile(String ip, int port, TFileInfo info) throws TException {
+        client.addFile(ip, port, info);
+    }
+
+    /**
      * send pools to controller
      * @param pools
      * @throws TException

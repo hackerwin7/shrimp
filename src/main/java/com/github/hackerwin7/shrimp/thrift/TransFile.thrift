@@ -145,6 +145,11 @@ service TControllerService {
     oneway void registerServer(1:string hostport),
 
     /**
+    * add a file info with server host and port to controller's pool info
+    **/
+    oneway void addFile(1:string host, 2:i32 port, 3:TFileInfo info),
+
+    /**
     * send a file pool info to the controller
     **/
     oneway void sendFilePool(1:TFilePool pool),
