@@ -80,11 +80,11 @@ public class HeartBeatController {
     public void start() throws Exception {
 
         /* init , scan firstly */
-        Thread initThread = new Thread(new Runnable() {
+        final Thread initThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    mProcSimple();
+                    mProcInit();
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
                 }
@@ -98,34 +98,46 @@ public class HeartBeatController {
             @Override
             public void run() {
                 try {
-                    mProcDuring();
+                    if(!initThread.isAlive()) // after init thread complete, start the during running
+                        mProcDuring();
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
                 }
             }
         }, 10000, SLEEP_INTERVAL);
 
-        /* long running , scan and send */
-        Timer longTimer = new Timer();
-        longTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    mProc();
-                } catch (Exception e) {
-                    LOG.error(e.getMessage(), e);
-                }
-            }
-        }, LONG_TIMER_SCAN * 1000, LONG_TIMER_SCAN * 1000);
+        /* long running , scan and send, is it necessary????
+         * cancel the long running temporarily */
+//        Timer longTimer = new Timer();
+//        longTimer.schedule(new TimerTask() {
+//            @Override
+//            public void run() {
+//                try {
+//                    mProc();
+//                } catch (Exception e) {
+//                    LOG.error(e.getMessage(), e);
+//                }
+//            }
+//        }, LONG_TIMER_SCAN * 1000, LONG_TIMER_SCAN * 1000);
     }
 
     /**
      * multiple process
      * @throws Exception
      */
-    private void mProcSimple() throws Exception {
+    private void mProcInit() throws Exception {
         TFilePool pool = multiScan(PARALLEL_DEGREE);
         send(pool);
+        flush(pool);
+    }
+
+    /**
+     * flush the pool to the local server
+     * @param pool
+     * @throws Exception
+     */
+    private void flush(TFilePool pool) throws Exception {
+        server.setLocalPool(pool);
     }
 
     /**

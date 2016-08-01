@@ -106,4 +106,8 @@ public class MultipleProcServer {
     public TFilePool getLocalPool() {
         return trans.getLocalPool();
     }
+
+    public void setLocalPool(TFilePool pool) {
+        trans.setLocalPool(pool);
+    }
 }

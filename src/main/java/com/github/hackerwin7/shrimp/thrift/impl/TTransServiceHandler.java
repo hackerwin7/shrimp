@@ -95,4 +95,8 @@ public class TTransServiceHandler implements TTransService.Iface {
     public TFilePool getLocalPool() {
         return localPool;
     }
+
+    public void setLocalPool(TFilePool pool) {
+        localPool = pool;
+    }
 }
