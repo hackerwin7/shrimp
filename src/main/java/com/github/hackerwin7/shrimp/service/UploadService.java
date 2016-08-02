@@ -153,6 +153,11 @@ public class UploadService {
         conth.start();
     }
 
+    /**
+     * send file info to the local server
+     * @param info
+     * @throws Exception
+     */
     private void informServer(final TFileInfo info) throws Exception {
         Thread serth = new Thread(new Runnable() {
             @Override
