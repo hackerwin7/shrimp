@@ -10,6 +10,7 @@ import org.apache.thrift.TException;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by IntelliJ IDEA.
@@ -48,7 +49,7 @@ public class TTransServiceHandler implements TTransService.Iface {
         if(localPool == null)
             localPool = new TFilePool();
         if(localPool.getPool() == null)
-            localPool.setPool(new HashMap<String, TFileInfo>());
+            localPool.setPool(new ConcurrentHashMap<String, TFileInfo>());
         localPool.getPool().put(info.getName(), info);
     }
 

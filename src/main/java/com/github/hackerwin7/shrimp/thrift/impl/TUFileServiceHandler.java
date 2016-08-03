@@ -91,6 +91,7 @@ public class TUFileServiceHandler implements TUFileService.Iface {
                 RandomAccessFile raf = null;
                 try {
                     raf = new RandomAccessFile(file, "rw");
+                    raf.setLength(info.getLength());
                     raf.seek(info.getStart());
                     while (write < info.getLength()) {
                         TFileChunk chunk = queue.take();

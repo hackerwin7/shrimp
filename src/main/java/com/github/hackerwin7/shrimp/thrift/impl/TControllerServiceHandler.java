@@ -5,16 +5,13 @@ import com.github.hackerwin7.shrimp.thrift.gen.TControllerService;
 import com.github.hackerwin7.shrimp.thrift.gen.TFileInfo;
 import com.github.hackerwin7.shrimp.thrift.gen.TFilePool;
 import com.github.hackerwin7.shrimp.thrift.gen.TOperation;
+import io.netty.util.internal.ConcurrentSet;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.thrift.TException;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Created by IntelliJ IDEA.
@@ -30,10 +27,10 @@ public class TControllerServiceHandler implements TControllerService.Iface {
     private static final Logger LOG = Logger.getLogger(TControllerServiceHandler.class);
 
     /* data */
-    private Map<String, TFileInfo> filePool = new HashMap<>();
-    private List<String> servers = new LinkedList<>();// 127.0.0.1:9098
-    private Map<String, TransClient> clients = new HashMap<>();
-    private Map<String, TFilePool> pools = new HashMap<>();// key = host:port
+    private Map<String, TFileInfo> filePool = new ConcurrentHashMap<>();
+    private Set<String> servers = new ConcurrentSet<>();// 127.0.0.1:9098, MAX = INTEGER.MAX
+    private Map<String, TransClient> clients = new ConcurrentHashMap<>();
+    private Map<String, TFilePool> pools = new ConcurrentHashMap<>();// key = host:port
 
     /* signal */
     private int findAccount = 3;
@@ -118,7 +115,7 @@ public class TControllerServiceHandler implements TControllerService.Iface {
      */
     @Override
     public void registerServer(String hostport) throws TException {
-        servers.add(hostport);
+        servers.add(hostport);// thread safe
         // when registering the server, we open the client conn
         clients.put(hostport, generateClient(hostport));
     }
@@ -179,6 +176,8 @@ public class TControllerServiceHandler implements TControllerService.Iface {
     /**
      * check the mem-data and return result
      * server directory path : complete, downloading
+     * how to get the least conn account of the download servers ??
+     *      how to get the running connection (through short heartbeat ??)
      * @param name
      * @return list of servers own the specific file
      * @throws TException
@@ -197,130 +196,6 @@ public class TControllerServiceHandler implements TControllerService.Iface {
             }
         }
         return hpList;
-    }
-
-    /**
-     * the strategy of no downloading directory
-     * @param name
-     * @return servers
-     * @throws TException
-     */
-    @Deprecated
-    private List<String> old_fileSevers(String name) throws TException {
-        // get the complete file info from the file pool
-        TFileInfo info = filePool.get(name);
-        //spread to server to get the their local file info
-        List<String> hpList = new LinkedList<>();
-        if(info != null) {
-            for (Map.Entry<String, TransClient> entry : clients.entrySet()) {
-                String hp = entry.getKey();
-                try {
-                    TransClient client = entry.getValue();
-                    TFileInfo local = client.fileInfo(name);
-                    if(StringUtils.isBlank(local.getName())) // not exists
-                        continue;
-                    if (StringUtils.equals(info.getMd5(), local.getMd5())) {
-                        hpList.add(hp);
-                        if (hpList.size() >= findAccount)
-                            break;
-                    }
-                } catch (TException e) {
-                    LOG.error("spread call error ;" + e.getMessage(), e);
-                    reload(hp);
-                    //retry once
-                    TransClient client = entry.getValue();
-                    TFileInfo local = client.fileInfo(name);
-                    if(StringUtils.isBlank(local.getName())) // not exists
-                        continue;
-                    if (StringUtils.equals(info.getMd5(), local.getMd5())) {
-                        hpList.add(hp);
-                        if (hpList.size() >= findAccount)
-                            break;
-                    }
-                }
-            }
-        } else { // the file pool dose not exists the specific file
-            HashMap<String, TFileInfo> md5Info = new HashMap<>();
-            HashMap<String, Integer> md5Int = new HashMap<>(); // counter
-            List<TFileInfo> infos = new LinkedList<>();
-            Map<String, TFileInfo> hostInfo = new HashMap<>();
-            for (Map.Entry<String, TransClient> entry : clients.entrySet()) {
-                String hp = entry.getKey();
-                try {
-                    TransClient client = entry.getValue();
-                    TFileInfo local = client.fileInfo(name);
-                    if(StringUtils.isBlank(local.getName())) // not exists
-                        continue;
-                    hostInfo.put(hp, local);
-                    infos.add(local);
-                    if(!md5Info.containsKey(hp)) {
-                        md5Info.put(local.getMd5(), local);
-                        md5Int.put(local.getMd5(), 1);
-                    } else {
-                        int num = md5Int.get(local.getMd5()) + 1;
-                        md5Int.put(local.getMd5(), num);
-                    }
-                } catch (TException e) {
-                    LOG.error("spread call error ;" + e.getMessage(), e);
-                    reload(hp);
-                    //retry once
-                    TransClient client = entry.getValue();
-                    TFileInfo local = client.fileInfo(name);
-                    if(StringUtils.isBlank(local.getName())) // not exists
-                        continue;
-                    hostInfo.put(hp, local);
-                    infos.add(local);
-                    if(!md5Info.containsKey(hp)) {
-                        md5Info.put(local.getMd5(), local);
-                        md5Int.put(local.getMd5(), 1);
-                    } else {
-                        int num = md5Int.get(local.getMd5()) + 1;
-                        md5Int.put(local.getMd5(), num);
-                    }
-                }
-            }
-            //find the max account of the md5 file info
-            String maxMd5 = findMaxMd5(md5Int, md5Info);
-            //update the file pool
-            filePool.put(name, md5Info.get(maxMd5));
-            //add the max mad5 file info into the hpList
-            for(Map.Entry<String, TFileInfo> entry : hostInfo.entrySet()) {
-                String hostport = entry.getKey();
-                TFileInfo single = entry.getValue();
-                if(StringUtils.equals(maxMd5, single.getMd5())) {
-                    hpList.add(hostport);
-                    if(hpList.size() >= findAccount)
-                        break;
-                }
-            }
-        }
-        return hpList;
-    }
-
-    /**
-     * find max account of md5
-     * @param mp
-     * @return max md5
-     */
-    private String findMaxMd5(HashMap<String, Integer> mp, HashMap<String, TFileInfo> infop) {
-        int max = 0;
-        String maxMd5 = null;
-        for(Map.Entry<String, Integer> entry : mp.entrySet()) {
-            String md5 = entry.getKey();
-            int count = entry.getValue();
-            if(count > max) {
-                max = count;
-                maxMd5 = md5;
-            } else if(count == max) { // length bigger is choosed
-                TFileInfo cur = infop.get(maxMd5);
-                TFileInfo next = infop.get(md5);
-                if(cur == null || next.getLength() > cur.getLength()) {
-                    max = count;
-                    maxMd5 = md5;
-                }
-            }
-        }
-        return maxMd5;
     }
 
     /* getter and setter */

@@ -53,6 +53,14 @@ public class DownloadClient {
     private ControllerClient controller = null;
 
     /**
+     * default constructor
+     * @throws Exception
+     */
+    public DownloadClient() throws Exception {
+
+    }
+
+    /**
      * zk args
      * @param zks
      * @throws Exception
@@ -213,6 +221,7 @@ public class DownloadClient {
                     boolean isTaken = false;
                     raf = new RandomAccessFile(new File(ingPath + fileName),
                             "rw");
+                    raf.setLength(info.getLength());//fixed file length
                     raf.seek(start);
 
                     /* writing */

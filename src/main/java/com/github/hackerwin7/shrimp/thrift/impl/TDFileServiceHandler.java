@@ -33,9 +33,6 @@ public class TDFileServiceHandler implements TDFileService.Iface {
     /* data */
     private RandomAccessFile raf = null;
 
-    /* read thread */
-    private Thread readThread = null;
-
     /* cache queue */
     private BlockingQueue<TFileChunk> queue = new LinkedBlockingQueue<>(QLEN);
 
@@ -62,6 +59,9 @@ public class TDFileServiceHandler implements TDFileService.Iface {
             info.setTs(System.currentTimeMillis());
             info.setMd5(Utils.md5Hex(path));
             info.setStart(start);
+
+            /* debug */
+            System.out.println(info);
         } catch (Throwable e) {
             LOG.error(e.getMessage(), e);
             err = 1;
@@ -80,7 +80,7 @@ public class TDFileServiceHandler implements TDFileService.Iface {
      * @param info
      */
     private void reading(final long startOffset, final TFileInfo info) {
-        readThread = new Thread(new Runnable() {
+        Thread readThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 long index = startOffset;
