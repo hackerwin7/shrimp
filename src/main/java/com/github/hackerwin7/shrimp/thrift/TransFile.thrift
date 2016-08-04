@@ -59,17 +59,17 @@ service TDFileService {
     * name : file name
     * startCon : download offset
     */
-    TFileInfo open(1:string name, 2:i64 start),
+    TFileInfo open(1:string clientId, 2:string name, 3:i64 start),
 
     /**
     * get continue chunks of file
     */
-    TFileChunk getChunk(),
+    TFileChunk getChunk(1:string clientId),
 
     /**
     * close connection
     */
-    oneway void close()
+    oneway void close(1:string clientId)
 }
 
 /**
@@ -79,17 +79,17 @@ service TUFileService {
     /**
     * send the file info open in the client
     **/
-    oneway void open(1:TFileInfo info),
+    oneway void open(1:string clientId, 2:TFileInfo info),
 
     /**
     * send chunk to upload whole file
     **/
-    oneway void sendChunk(1:TFileChunk chunk),
+    oneway void sendChunk(1:string clientId, 2:TFileChunk chunk),
 
     /**
     * checking the upload cases
     **/
-    TErr checking(1:TFileInfo info),
+    TErr checking(1:string clientId, 2:TFileInfo info),
 
     /**
     * get the file info
@@ -99,7 +99,7 @@ service TUFileService {
     /**
     * close the upload connection
     **/
-    oneway void close()
+    oneway void close(1:string clientId)
 }
 
 /**

@@ -48,6 +48,9 @@ public class UploadClient {
     /* data */
     private String zks = null;
 
+    /* client id */
+    private String clientId = null;
+
     public UploadClient(String zks) {
         this.zks = zks;
     }
@@ -61,7 +64,11 @@ public class UploadClient {
      * @return
      * @throws Exception
      */
-    public Err upload(String host, int port, String fileName, long offset) throws TException {
+    public Err upload(String host, int port, String fileName, long offset) throws Exception {
+
+        /* gen client id */
+        clientId = Utils.getClientId("upload", fileName, offset);
+
         error = new Err();
         error.setCommitOffset(offset);
         TTransport transport = null;
@@ -88,9 +95,9 @@ public class UploadClient {
      * @param port
      * @param fileName
      * @return error code
-     * @throws TException
+     * @throws Exception
      */
-    public Err upload(String host, int port, String fileName) throws TException {
+    public Err upload(String host, int port, String fileName) throws Exception {
         return upload(host, port, fileName, 0L);
     }
 
@@ -110,7 +117,7 @@ public class UploadClient {
             //before the upload , inform the controller the file information
             inform(info);
 
-            client.open(info); // server receive the info, and startCon writing to wait the file chunk from the queue
+            client.open(clientId, info); // server receive the info, and startCon writing to wait the file chunk from the queue
 
         /* client processing */
             reading(info);// reading and sending
@@ -120,7 +127,7 @@ public class UploadClient {
             LOG.error(e.getMessage(), e);
         } finally {
             if(client != null)
-                client.close();
+                client.close(clientId);
         }
         return 0;
     }
@@ -223,7 +230,7 @@ public class UploadClient {
         long send = info.getStart();
         while (send < info.getLength()) {
             TFileChunk chunk = queue.take();
-            client.sendChunk(chunk);
+            client.sendChunk(clientId, chunk);
             send += chunk.getLength();
         }
     }
@@ -237,7 +244,7 @@ public class UploadClient {
     private void checking(TUFileService.Client client, TFileInfo info) throws Exception {
 
         /* receive the response of the error */
-        TErr te = client.checking(info);
+        TErr te = client.checking(clientId, info);
         error.setErrCode(te.getErr());
         error.setCommitOffset(te.getCommit());
     }

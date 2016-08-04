@@ -8,6 +8,7 @@ import org.apache.thrift.TException;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -30,30 +31,23 @@ public class TDFileServiceHandler implements TDFileService.Iface {
     private String edPath = null;
     private String ingPath = null;
 
-    /* data */
-    private RandomAccessFile raf = null;
-
     /* cache queue */
-    private BlockingQueue<TFileChunk> queue = new LinkedBlockingQueue<>(QLEN);
-
-    /* signal */
-    private int err = 0;
+    private ConcurrentHashMap<String, LinkedBlockingQueue<TFileChunk>> queues = new ConcurrentHashMap<>();// key: clientId, val: queue
 
     /**
      * open the file, download the reading data thread and then return the opened file info
+     * @param clientId
      * @param name
      * @param start
      * @return file info
      * @throws TException
      */
     @Override
-    public TFileInfo open(String name, long start) throws TException {
+    public TFileInfo open(String clientId, String name, long start) throws TException {
         TFileInfo info = new TFileInfo();
         String path = edPath + name;
         File file = new File(path);
         try {
-            raf = new RandomAccessFile(file, "r");
-            raf.seek(start);//set offset
             info.setName(name);
             info.setLength(file.length());
             info.setTs(System.currentTimeMillis());
@@ -64,12 +58,15 @@ public class TDFileServiceHandler implements TDFileService.Iface {
             System.out.println(info);
         } catch (Throwable e) {
             LOG.error(e.getMessage(), e);
-            err = 1;
             throw new TException("open encounter error !");
         }
 
+        /* creating exclusive queue for client */
+        LinkedBlockingQueue<TFileChunk> queue = new LinkedBlockingQueue(QLEN);
+        queues.put(clientId, queue);
+
         /* download reading */
-        reading(start, info);
+        reading(start, info, queue);
 
         return info;
     }
@@ -78,8 +75,9 @@ public class TDFileServiceHandler implements TDFileService.Iface {
      * download the thread to read data from the file
      * @param startOffset
      * @param info
+     * @param queue
      */
-    private void reading(final long startOffset, final TFileInfo info) {
+    private void reading(final long startOffset, final TFileInfo info, final LinkedBlockingQueue<TFileChunk> queue) {
         Thread readThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -91,6 +89,11 @@ public class TDFileServiceHandler implements TDFileService.Iface {
 
                 /* download reading */
                 try {
+                    /* building driver */
+                    RandomAccessFile raf = new RandomAccessFile(new File(edPath + info.getName()), "r");
+                    raf.seek(startOffset);
+
+                    /* reading */
                     while (index <= info.length - 1) {
 
                         /* read */
@@ -113,9 +116,12 @@ public class TDFileServiceHandler implements TDFileService.Iface {
                         if(left < read)
                             read = (int) left;
                     }
+
+                    /* close */
+                    if(raf != null)
+                        raf.close();
                 } catch (Throwable e) {
                     LOG.error(e.getMessage(), e);
-                    err = 1;
                 }
             }
         });
@@ -124,36 +130,38 @@ public class TDFileServiceHandler implements TDFileService.Iface {
 
     /**
      * get a file chunk from the queue
+     * @param clientId
      * @return file chunk
      * @throws TException
      */
     @Override
-    public TFileChunk getChunk() throws TException {
+    public TFileChunk getChunk(String clientId) throws TException {
         try {
+            LinkedBlockingQueue<TFileChunk> queue = queues.get(clientId);
             if(queue.isEmpty())
                 return null;
             else
                 return queue.take();
         } catch (Throwable e) {
             LOG.error(e.getMessage(), e);
-            err = 1;
             throw new TException("queue take chunk error!");
         }
     }
 
     /**
      * close the connection
+     * @param clientId
      * @throws TException
      */
     @Override
-    public void close() throws TException {
+    public void close(String clientId) throws TException {
         try {
-            if(raf != null)
-                raf.close();
-            queue.clear();
+            LinkedBlockingQueue<TFileChunk> queue = queues.get(clientId);
+            if(queue != null)
+                queue.clear();
+            queues.remove(clientId); // dispose the client exclusive queue
         } catch (Throwable e) {
             LOG.error(e.getMessage(), e);
-            err = 1;
         }
     }
 
@@ -168,9 +176,5 @@ public class TDFileServiceHandler implements TDFileService.Iface {
 
     public void setIngPath(String ingPath) {
         this.ingPath = ingPath;
-    }
-
-    public int getErr() {
-        return err;
     }
 }

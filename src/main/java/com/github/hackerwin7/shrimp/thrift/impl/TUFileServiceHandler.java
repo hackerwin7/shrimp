@@ -12,6 +12,7 @@ import org.apache.thrift.TException;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -34,26 +35,30 @@ public class TUFileServiceHandler implements TUFileService.Iface {
     private String ingPath = null;
     private String edPath = null;
 
-    /* write thread */
-    private Thread wth = null;
-
     /* cache queue */
-    private BlockingQueue<TFileChunk> queue = new LinkedBlockingQueue<>(QLEN);
+    private ConcurrentHashMap<String, LinkedBlockingQueue<TFileChunk>> queues = new ConcurrentHashMap<>();// key: clientId, val: queue
 
-    /* Error code */
-    private Err error = null;
+    /* error pool */
+    private ConcurrentHashMap<String, Err> errors = new ConcurrentHashMap<>();// key: clientId, val: error
 
     /**
      * get the client send the file info, how to process it??
+     * @param clientId
      * @param info
      * @return file information
      * @throws TException
      */
     @Override
-    public void open(TFileInfo info) throws TException {
-        error = new Err();
+    public void open(String clientId, TFileInfo info) throws TException {
+
+        /* generate exclusive error and queue */
+        LinkedBlockingQueue<TFileChunk> queue = new LinkedBlockingQueue<>(QLEN);
+        queues.put(clientId, queue);
+        Err error = new Err();
+        errors.put(clientId, error);
+
         try {
-            writing(info);
+            writing(info, queue, error);
         } catch (Exception | Error e) {
             LOG.error(e.getMessage(), e);
             throw new TException("writing error!");
@@ -62,12 +67,14 @@ public class TUFileServiceHandler implements TUFileService.Iface {
 
     /**
      * client send the chunk to the server , we save these chunk into the queue
+     * @param clientId
      * @param chunk
      * @throws TException
      */
     @Override
-    public void sendChunk(TFileChunk chunk) throws TException {
+    public void sendChunk(String clientId, TFileChunk chunk) throws TException {
         try {
+            LinkedBlockingQueue<TFileChunk> queue = queues.get(clientId);
             queue.put(chunk);
         } catch (Exception | Error e) {
             LOG.error(e.getMessage(), e);
@@ -79,10 +86,11 @@ public class TUFileServiceHandler implements TUFileService.Iface {
      * write the chunk into the disk from the queue
      * startCon the writing thread
      * @param info
+     * @param queue
      * @throws Exception
      */
-    private void writing(final TFileInfo info) throws Exception {
-        wth = new Thread(new Runnable() {
+    private void writing(final TFileInfo info, final LinkedBlockingQueue<TFileChunk> queue, final Err error) throws Exception {
+        Thread wth = new Thread(new Runnable() {
             @Override
             public void run() {
                 long write = info.getStart();
@@ -118,12 +126,14 @@ public class TUFileServiceHandler implements TUFileService.Iface {
 
     /**
      * checking the upload cases, error code or md5 match
+     * @param clientId
      * @param info
      * @return thrift error code
      * @throws TException
      */
     @Override
-    public TErr checking(TFileInfo info) throws TException {
+    public TErr checking(String clientId, TFileInfo info) throws TException {
+        Err error = errors.get(clientId);
         TErr terror = new TErr();
         if(error.getErrCode() != Err.OK) {
             terror.setErr(error.getErrCode());
@@ -187,12 +197,16 @@ public class TUFileServiceHandler implements TUFileService.Iface {
 
     /**
      * close the cache, connection etc..
+     * @param clientId
      * @throws TException
      */
     @Override
-    public void close() throws TException {
+    public void close(String clientId) throws TException {
+        LinkedBlockingQueue<TFileChunk> queue = queues.get(clientId);
         if(queue != null)
             queue.clear();
+        queues.remove(clientId);
+        errors.remove(clientId);
     }
 
     /* getter and setter */

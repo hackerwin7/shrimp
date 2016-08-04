@@ -1,10 +1,14 @@
 package com.github.hackerwin7.shrimp.common;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.InetAddress;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by IntelliJ IDEA.
@@ -52,5 +56,20 @@ public class Utils {
     public static String ip() throws Exception {
         InetAddress ip = InetAddress.getLocalHost();
         return ip.getHostAddress();
+    }
+
+    /**
+     * get the client id from the client
+     * clientId = ip#op#fileName#offset#ts
+     * @return client id
+     */
+    public static String getClientId(String op, String name, long offset) throws Exception {
+        List<String> items = new LinkedList<>();
+        items.add(ip());
+        items.add(op);
+        items.add(name);
+        items.add(String.valueOf(offset));
+        items.add(String.valueOf(System.currentTimeMillis()));
+        return StringUtils.join(items, "#");
     }
 }

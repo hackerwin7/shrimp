@@ -99,26 +99,25 @@ public class HeartBeatController {
             public void run() {
                 try {
                     if(!initThread.isAlive()) // after init thread complete, start the during running
-                        mProcDuring();
+                        mProcShort();
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
                 }
             }
-        }, 10000, SLEEP_INTERVAL);
+        }, 10000, SLEEP_INTERVAL);// 10 secs
 
-        /* long running , scan and send, is it necessary????
-         * cancel the long running temporarily */
-//        Timer longTimer = new Timer();
-//        longTimer.schedule(new TimerTask() {
-//            @Override
-//            public void run() {
-//                try {
-//                    mProc();
-//                } catch (Exception e) {
-//                    LOG.error(e.getMessage(), e);
-//                }
-//            }
-//        }, LONG_TIMER_SCAN * 1000, LONG_TIMER_SCAN * 1000);
+        /* long running , scan and flush the local pool, not send controller*/
+        Timer longTimer = new Timer();
+        longTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    mProcLong();
+                } catch (Exception e) {
+                    LOG.error(e.getMessage(), e);
+                }
+            }
+        }, LONG_TIMER_SCAN * 1000, LONG_TIMER_SCAN * 1000);// 5 mins
     }
 
     /**
@@ -144,17 +143,16 @@ public class HeartBeatController {
      * multiple process and sleep random seconds
      * @throws Exception
      */
-    private void mProc() throws Exception {
+    private void mProcLong() throws Exception {
         TFilePool pool = multiScan(PARALLEL_DEGREE);
-        randSleep();
-        send(pool);
+        server.setLocalPool(pool); // flush the local scan result into the local pool
     }
 
     /**
      * not init, during running, hearteat send
      * @throws Exception
      */
-    private void mProcDuring() throws Exception {
+    private void mProcShort() throws Exception {
         TFilePool pool = server.getLocalPool();
         randSleep();
         send(pool);

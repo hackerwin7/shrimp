@@ -52,6 +52,9 @@ public class DownloadClient {
     /* controller */
     private ControllerClient controller = null;
 
+    /* client id */
+    private String clientId = null;
+
     /**
      * default constructor
      * @throws Exception
@@ -89,6 +92,9 @@ public class DownloadClient {
      */
     public Err download(String host, int port, String fileName, long offset) throws Exception {
 
+        /* generate client id */
+        clientId = Utils.getClientId("download", fileName, offset);
+
         /* build error code */
         error = new Err();
         error.setCommitOffset(offset);
@@ -117,9 +123,9 @@ public class DownloadClient {
      * @param fileName
      * @param offset
      * @return error code
-     * @throws TException
+     * @throws Exception
      */
-    public Err download(String fileName, long offset) throws TException {
+    public Err download(String fileName, long offset) throws Exception {
         //controller find the target to download
         Err err = null;
         try {
@@ -145,9 +151,9 @@ public class DownloadClient {
      * default offset is 0
      * @param fileName
      * @return error code
-     * @throws TException
+     * @throws Exception
      */
-    public Err download(String fileName) throws TException {
+    public Err download(String fileName) throws Exception {
         return download(fileName, 0);
     }
 
@@ -163,14 +169,14 @@ public class DownloadClient {
         long fetch = start; // startCon is offset that haven't been write
         int code = 0;
         try {
-            TFileInfo info = client.open(fileName, start);
+            TFileInfo info = client.open(clientId, fileName, start);
 
             /* startCon writing */
             writing(fileName, start, info);
 
             /* startCon receive file chunk from the server */
             while (fetch < info.length) {
-                TFileChunk chunk = client.getChunk();
+                TFileChunk chunk = client.getChunk(clientId);
                 if(chunk != null) {
                     queue.put(chunk);
                     fetch += chunk.length;
@@ -183,7 +189,7 @@ public class DownloadClient {
             LOG.error(e.getMessage(), e);
         } finally {
             if(client != null)
-                client.close();
+                client.close(clientId);
         }
 
         /* move the file from ing to ed if ok */
