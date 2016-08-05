@@ -28,6 +28,9 @@ public class HeartBeatController {
     /* logger */
     private static final Logger LOG = Logger.getLogger(HeartBeatController.class);
 
+    /* constants */
+    public static final int LOGGING_COUNT = 10000;
+
     /* running signal */
     private AtomicBoolean running = new AtomicBoolean(true);
 
@@ -193,9 +196,17 @@ public class HeartBeatController {
             });
         }
         executor.shutdown();
+
+        /* control executor service waiting terminated logging */
+        int waitCnt = 0;
         while (!executor.isTerminated()) {
-            LOG.info("processing " + infos.size() + " files ......");
+            waitCnt++;
+            if(waitCnt % LOGGING_COUNT == 0) {
+                LOG.info("processing " + infos.size() + " files ......");
+                waitCnt = 0;
+            }
         }
+
         TFilePool pool = new TFilePool();
         pool.setHost(host);
         pool.setPort(port);

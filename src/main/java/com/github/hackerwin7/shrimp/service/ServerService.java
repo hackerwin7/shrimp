@@ -93,6 +93,7 @@ public class ServerService {
 
         HeartBeatController hb = new HeartBeatController(zk, host, port); // why too many connections ??
         hb.setPath(edPath);
+        hb.setServer(server);
         hb.start();
     }
 }

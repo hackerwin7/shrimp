@@ -46,21 +46,12 @@ public class UploadService {
         /* args input */
         fileName = getName(src);
         /* load config to get path */
-        long loads = System.currentTimeMillis();
         load();
-        long loadd = System.currentTimeMillis();
-        LOG.debug("load : " + (loadd - loads));
         /* copy file to the path */
         String des = edPath + fileName;
-        long copys = System.currentTimeMillis();
         fileCopy(src, des);
-        long copyd = System.currentTimeMillis();
-        LOG.debug("copy : " + (copyd - copys));
         /* scan the file info and inform the controller */
-        long informs = System.currentTimeMillis();
         inform();
-        long informd = System.currentTimeMillis();
-        LOG.debug("inform : " + (informd - informs));
     }
 
     /**
@@ -113,8 +104,8 @@ public class UploadService {
      */
     private void inform() throws Exception {
         TFileInfo info = getInfo(edPath + fileName);
-        informController(info);
         informServer(info);
+        informController(info);
     }
 
     /**
@@ -134,23 +125,14 @@ public class UploadService {
 
     /**
      * send a file info to the controller
+     * maybe occur the overwrite problem ??? new controller pool overwritten by the old server pool
      * @throws Exception
      */
-    private void informController(final TFileInfo info) throws Exception {
-        Thread conth = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    ControllerClient client = new ControllerClient(zks);
-                    client.open();
-                    client.sendFile(ip, port, info);
-                    client.close();
-                } catch (Exception e) {
-                    LOG.error(e.getMessage(), e);
-                }
-            }
-        });
-        conth.start();
+    private void informController(TFileInfo info) throws Exception {
+        ControllerClient client = new ControllerClient(zks);
+        client.open();
+        client.sendFile(ip, port, info);
+        client.close();
     }
 
     /**
@@ -158,20 +140,10 @@ public class UploadService {
      * @param info
      * @throws Exception
      */
-    private void informServer(final TFileInfo info) throws Exception {
-        Thread serth = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    TransClient client = new TransClient(ip, port);
-                    client.open();
-                    client.send(info);
-                    client.close();
-                } catch (Exception e) {
-                    LOG.error(e.getMessage(), e);
-                }
-            }
-        });
-        serth.start();
+    private void informServer(TFileInfo info) throws Exception {
+        TransClient client = new TransClient(ip, port);
+        client.open();
+        client.send(info);
+        client.close();
     }
 }
