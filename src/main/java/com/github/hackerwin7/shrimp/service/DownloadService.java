@@ -75,32 +75,17 @@ public class DownloadService {
 
         /* inform */
         if(err.getErrCode() == Err.OK)
-            inform();
+            inform(client.getDownInfo());
     }
 
     /**
      * inform the local and controller
+     * @param info
      * @throws Exception
      */
-    private void inform() throws Exception {
-        TFileInfo info = getInfo(edPath + fileName);
+    private void inform(TFileInfo info) throws Exception {
         informServer(info);
         informController(info);
-    }
-
-    /**
-     * get info from the path
-     * @param path
-     * @return file thrift info
-     * @throws Exception
-     */
-    private TFileInfo getInfo(String path) throws Exception {
-        File file = new File(path);
-        TFileInfo info = new TFileInfo();
-        info.setName(file.getName());
-        info.setLength(file.length());
-        info.setMd5(Utils.md5Hex(path));
-        return info;
     }
 
     /**

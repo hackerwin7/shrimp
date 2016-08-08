@@ -55,6 +55,9 @@ public class DownloadClient {
     /* client id */
     private String clientId = null;
 
+    /* downloaded file info */
+    private TFileInfo downInfo = null;
+
     /**
      * default constructor
      * @throws Exception
@@ -266,10 +269,15 @@ public class DownloadClient {
      */
     private int checking(TFileInfo info, String fileName) throws Exception {
         writeThread.join();//waiting writing ended
+
+        /* checking */
         if(error.getErrCode() != Err.OK)
             return -1;// before checking , there has been a error occured
+
+        /* update the download download file info */
+        downInfo = getInfo(ingPath, fileName);
         String src = info.getMd5();
-        String des = Utils.md5Hex(ingPath + fileName);
+        String des = downInfo.getMd5();
         if(src.equals(des)) {
             error.setErrCode(Err.OK);
             return 0;
@@ -277,6 +285,22 @@ public class DownloadClient {
             error.setErrCode(Err.MD5_CHECKING);
             return Err.MD5_CHECKING;
         }
+    }
+
+    /**
+     * get file info from the file name and the path
+     * @param relPath
+     * @param name
+     * @return file info
+     * @throws Exception
+     */
+    private TFileInfo getInfo(String relPath, String name) throws Exception {
+        TFileInfo info = new TFileInfo();
+        File file = new File(relPath + name);
+        info.setName(name);
+        info.setMd5(Utils.md5Hex(relPath + name));
+        info.setLength(file.length());
+        return info;
     }
 
     /* getter and setter */
@@ -297,4 +321,7 @@ public class DownloadClient {
         this.controller = controller;
     }
 
+    public TFileInfo getDownInfo() {
+        return downInfo;
+    }
 }
