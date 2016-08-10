@@ -298,7 +298,7 @@ public class ControllerService {
                 LOG.info("-----------------------> " + pools);
 
                 if(!zk.exists(ZK_ROOT + ZK_SEC_CONTROLLER)) {
-                    LOG.info("not found zk secondary controller info......");
+                    LOG.warn("not found zk secondary controller info......");
                     cnt++;
                     if(cnt >= RETRY_COUNT) {
                         int signal = reloadSecController();

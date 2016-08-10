@@ -139,7 +139,8 @@ public class TDFileServiceHandler implements TDFileService.Iface {
         try {
             LinkedBlockingQueue<TFileChunk> queue = queues.get(clientId);
             if(queue.isEmpty())
-                return null;
+                /* return null;//this null will cause to the client "unknown result" exception */
+                return new TFileChunk(); // return a empty chunk object, must not be null
             else
                 return queue.take();
         } catch (Throwable e) {

@@ -9,8 +9,8 @@
 /* package */
 namespace java com.github.hackerwin7.shrimp.thrift.gen
 
-/* constatns for download and upload transfer unit KB */
-const i32 CHUNK_UNIT = 10240
+/* constatns for download and upload transfer unit bytes,  such as 1048576 bytes = 1 MB, 5242880 bytes = 5 MB*/
+const i32 CHUNK_UNIT = 5242880
 
 /* data */
 

@@ -179,8 +179,23 @@ public class DownloadClient {
 
             /* startCon receive file chunk from the server */
             while (fetch < info.length) {
-                TFileChunk chunk = client.getChunk(clientId);
-                if(chunk != null) {
+                //TFileChunk chunk = client.getChunk(clientId);
+                TFileChunk chunk = null;
+                /* retry when occur exception */
+                int tryCnt = 0;
+                while (true) {
+                    try {
+                        chunk = client.getChunk(clientId);
+                        break;
+                    } catch (TException te) {
+                        LOG.error(te.getMessage(), te);
+                        Thread.sleep(3000);
+                        tryCnt++;
+                        if(tryCnt >= 4)//retry 3 times
+                            throw new Exception("failed retry 3 times for client get chunk......");
+                    }
+                }
+                if(chunk != null && chunk.getLength() > 0) { // put "not null and not empty" chunk into the queue
                     queue.put(chunk);
                     fetch += chunk.length;
                 }
@@ -190,6 +205,7 @@ public class DownloadClient {
             code = checking(info, fileName);
         } catch (Exception | Error e) {
             LOG.error(e.getMessage(), e);
+            error.setErrCode(Err.DOWNLOAD_FAIL);
         } finally {
             if(client != null)
                 client.close(clientId);

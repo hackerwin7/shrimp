@@ -29,15 +29,11 @@ public class HeartBeatController {
     private static final Logger LOG = Logger.getLogger(HeartBeatController.class);
 
     /* constants */
-    public static final int LOGGING_COUNT = 10000;
-
-    /* running signal */
-    private AtomicBoolean running = new AtomicBoolean(true);
+    public static final int LOGGING_Timing = 1000;// 1 second
 
     /* constants */
     public static final long SLEEP_INTERVAL = 10000;
     public static final int RAND_SLEEP_SEC = 20;
-    public static final int QLEN = 4096;
     public static final int PARALLEL_DEGREE = 50;
     public static final int LONG_TIMER_SCAN = 5 * 60; //5 mins
 
@@ -176,12 +172,9 @@ public class HeartBeatController {
         File dir = new File(path);
         final String relPath = getPath(path);
         File[] files = dir.listFiles();
-        final BlockingQueue<File> inq = new LinkedBlockingQueue<>(QLEN);
-        final BlockingQueue<TFileInfo> outq = new LinkedBlockingQueue<>(QLEN);
-        for(File file : files) {
-            inq.put(file);
+        if(files == null) {
+            return new TFilePool();// a empty pool
         }
-        int len = files.length;
 
         /* parallel process */
         final ConcurrentMap<String, TFileInfo> infos = new ConcurrentHashMap<>();
@@ -197,15 +190,12 @@ public class HeartBeatController {
         }
         executor.shutdown();
 
-        /* control executor service waiting terminated logging */
-        int waitCnt = 0;
+        /* control executor service waiting terminated logging by timing */
+        LOG.info("...... waiting the all thread terminated ......");
         while (!executor.isTerminated()) {
-            waitCnt++;
-            if(waitCnt % LOGGING_COUNT == 0) {
-                LOG.info("processing " + infos.size() + " files ......");
-                waitCnt = 0;
-            }
+            Thread.sleep(LOGGING_Timing);
         }
+        LOG.info("...... all the thread is terminated ......");
 
         TFilePool pool = new TFilePool();
         pool.setHost(host);
