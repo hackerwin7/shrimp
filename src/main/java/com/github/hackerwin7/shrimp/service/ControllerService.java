@@ -61,16 +61,12 @@ public class ControllerService {
     /* driver */
     private ZkClient zk = null;
 
-    /* thread start and sub*/
+    /* thread timer task start and sub*/
     private ControllerServer tController = null;
     private Timer timer = null;
-    private Thread signal = null;
-    private Thread trans = null;
-    private Thread sth = null;
-
-    /* signal */
-    private AtomicBoolean transRunning = new AtomicBoolean(true);
-    private AtomicBoolean statusRunning = new AtomicBoolean(true);
+    private Timer signal = null;
+    private Timer trans = null;
+    private Timer sth = null;
 
     /**
      * default reload constructor
@@ -213,13 +209,13 @@ public class ControllerService {
         /* heartbeat */
         heartbeat();
 
-        /* close some secondary thread */
+        /* close some secondary thread and timer task */
         if(trans != null) {
-            transRunning.set(false);
+            trans.cancel();
             trans = null;
         }
         if(sth != null) {
-            statusRunning.set(false);
+            sth.cancel();
             sth = null;
         }
     }
@@ -361,25 +357,22 @@ public class ControllerService {
      * @throws Exception
      */
     private void signal() throws Exception {
-        if(signal == null || !signal.isAlive()) {
-            signal = new Thread(new Runnable() {
+        if(signal == null) {
+            signal = new Timer();
+            signal.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    while (true) {
-                        try {
-                            TOperation op = tController.getOp();
-                            if (op == TOperation.restart) { // restart the whole service
-                                close();
-                                startSec();
-                            }
-                            Thread.sleep(2000);
-                        } catch (Exception | Error e) {
-                            LOG.error(e.getMessage(), e);
+                    try {
+                        TOperation op = tController.getOp();
+                        if (op == TOperation.restart) { // restart the whole service
+                            close();
+                            startSec();
                         }
+                    } catch (Exception | Error e) {
+                        LOG.error(e.getMessage(), e);
                     }
                 }
-            });
-            signal.start();
+            }, 2000, 2000);
         }
     }
 
@@ -388,26 +381,23 @@ public class ControllerService {
      * @throws Exception
      */
     private void transfer() throws Exception {
-        if(trans == null || !trans.isAlive()) {
-            trans = new Thread(new Runnable() {
+        if(trans == null) {
+            trans = new Timer();
+            trans.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    transRunning.set(true);
-                    while (transRunning.get()) {
-                        try {
-                            if(!zk.exists(ZK_ROOT + ZK_CONTROLLER)) {
-                                //transfer the sec-controller to controller and restart the controller to sec-controller
-                                LOG.debug("transfer to master controller......");
-                                trans2Cont();
-                            }
-                            Thread.sleep(3000);
-                        } catch (Exception | Error e) {
-                            LOG.error(e.getMessage(), e);
+                    try {
+                        if(!zk.exists(ZK_ROOT + ZK_CONTROLLER)) {
+                            //transfer the sec-controller to controller and restart the controller to sec-controller
+                            LOG.debug("transfer to master controller......");
+                            trans2Cont();
                         }
+                        Thread.sleep(3000);
+                    } catch (Exception | Error e) {
+                        LOG.error(e.getMessage(), e);
                     }
                 }
-            });
-            trans.start();
+            }, 5000, 5000);
         }
     }
 
@@ -416,24 +406,20 @@ public class ControllerService {
      * @throws Exception
      */
     private void status() throws Exception {
-        if(sth == null || !sth.isAlive()) {
-            sth = new Thread(new Runnable() {
+        if(sth == null) {
+            sth = new Timer();
+            sth.schedule(new TimerTask() {
                 @Override
                 public void run() {
                     try {
-                        statusRunning.set(true);
-                        while (statusRunning.get()) {
-                            Map<String, TFilePool> pools = tController.getPools();
-                            LOG.info("===========================================================> backup pool info: ");
-                            LOG.info("-----------------------> " + pools);
-                            Thread.sleep(30 * 1000);
-                        }
+                        Map<String, TFilePool> pools = tController.getPools();
+                        LOG.info("===========================================================> backup pool info: ");
+                        LOG.info("-----------------------> " + pools);
                     } catch (Exception | Error e) {
                         LOG.error(e.getMessage(), e);
                     }
                 }
-            });
-            sth.start();
+            }, 2000, 30 * 1000);
         }
     }
 
@@ -455,11 +441,11 @@ public class ControllerService {
             timer = null;
         }
         if(trans != null) {
-            transRunning.set(false);
+            trans.cancel();
             trans = null;
         }
         if(sth != null) {
-            statusRunning.set(false);
+            sth.cancel();
             sth = null;
         }
         //could not close the signal, it can not kill itself (signal can not close signal)
