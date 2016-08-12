@@ -7,11 +7,13 @@ a distributed system which transfer data or file smoothly
 ```
 mvn clean install
 ```
+
 2.unpackage the tar and enter the dir
 ```
 tar xvf xxx.tar.gz -C ./
 cd xxx/
 ```
+
 3.config the conf/controller.properties and conf/serverproperties
 such as:
 ```
@@ -36,6 +38,7 @@ the ```downloading.dir.path``` is a temporary dir for downloading files
 the ```downloaded.dir.path``` is a complete dir for downloaded files  
 **controller.properties** is necessary to start controller  
 **server.properties** is necessary to start server  
+
 4.start Controller or spServer(generally, two controllers and multiple servers)  
 ```
 ./bin/spController.sh start
@@ -44,6 +47,7 @@ or
 ```
 ./bin/spServer.sh start
 ```
+
 5.use bin/spUpload.sh or bin/spDownload to transfer file  
 ```
 ./bin/spUpload.sh ~/dir1/dir2/filename
